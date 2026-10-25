@@ -86,6 +86,7 @@ fun AppDrawer(
     onOpenSettings: () -> Unit,
     onDismiss: () -> Unit,
     onAddToHome: (AppInfo) -> Unit,
+    onDropToHome: (AppInfo) -> Unit,
 ) {
     var list by remember { mutableStateOf(apps) }
     LaunchedEffect(apps) { list = apps }
@@ -138,7 +139,7 @@ fun AppDrawer(
         if (searchActive) 1 else (list.size + spec.perPage - 1) / spec.perPage
     })
 
-    /** 拖动中的边缘处理：左右自动翻页；最后一页右边缘移到末尾（自动产生新页） */
+    /** 拖动中的边缘处理：左右自动翻页；拖到屏幕上缘 → 移到主屏 */
     fun handleMove(dragged: AppInfo, pos: Offset) {
         if (gridSize == IntSize.Zero) return
         val padH = with(density) { 16.dp.toPx() }
@@ -147,6 +148,10 @@ fun AppDrawer(
         val now = System.currentTimeMillis()
         if (now - lastFlipAt <= 450) return
         when {
+            pos.y < edge -> {
+                // 拖到网格上缘：准备移到主屏
+                lastFlipAt = now
+            }
             pos.x < padH + edge && page > 0 -> {
                 lastFlipAt = now
                 scope.launch { pagerState.animateScrollToPage(page - 1) }
@@ -176,6 +181,11 @@ fun AppDrawer(
 
     fun dropAt(dragged: AppInfo, pos: Offset) {
         if (gridSize == IntSize.Zero) return
+        // 松手在网格上缘 → 移到主屏（关闭抽屉 + 放入第一个空槽）
+        if (pos.y < with(density) { 48.dp.toPx() }) {
+            onDropToHome(dragged)
+            return
+        }
         // 翻页动画中松手：用落定目标页计算
         val page = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
         val padH = with(density) { 16.dp.toPx() }

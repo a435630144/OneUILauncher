@@ -207,6 +207,16 @@ fun HomeScreen(
     }
 
     fun handleDragEnd(dragged: HomeItem) {
+        // 拖到网格上缘 → 从主屏移除（应用回到抽屉）
+        if (gridSize != IntSize.Zero && dragPos.y < with(density) { 40.dp.toPx() } && dragged is HomeApp) {
+            removeItem(dragged)
+            android.widget.Toast.makeText(
+                context2,
+                "已从主屏移除，可在抽屉中找到",
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            return
+        }
         val dc = dockCoords
         val gc = gridCoords
         // 拖到 Dock：替换对应槽位的应用，旧应用回到第一页末尾
@@ -348,13 +358,14 @@ fun HomeScreen(
                 )
             }
             .pointerInput(Unit) {
-                // 手写长按检测：down 后 400ms 内未抬起 → 长按成立（空白菜单）
+                // 手写长按检测（500ms，晚于图标拖拽的 400ms）：
+                // 长按落在图标上时 cell 先进入拖拽（draggingItem 非空），根菜单让位
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                    val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis + 120) {
                         waitForUpOrCancellation()
                     }
-                    if (up == null) {
+                    if (up == null && draggingItem == null) {
                         homeMenuAt = down.position
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         waitForUpOrCancellation()
@@ -890,14 +901,7 @@ fun FolderIcon(
                 }
             }
             if (badge > 0) {
-                Box(
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 3.dp, y = (-2).dp)
-                        .size(11.dp)
-                        .background(Color(0xFFFF453A), CircleShape)
-                        .border(1.5.dp, Color.White, CircleShape),
-                )
+                BadgeDot(badge, Modifier.align(Alignment.TopEnd).offset(x = 3.dp, y = (-2).dp))
             }
         }
         if (showLabel) {

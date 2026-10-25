@@ -74,6 +74,7 @@ import java.util.Locale
 fun LauncherApp() {
     val context = LocalContext.current
     val store = remember { LauncherStore(context) }
+    BadgeStore.showNumbers = store.badgeNumbers()
 
     var allApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     var order by remember { mutableStateOf<List<AppInfo>>(emptyList()) } // 抽屉
@@ -273,6 +274,15 @@ fun LauncherApp() {
                 onAddToHome = { app ->
                     addToHome(app)
                 },
+                onDropToHome = { app ->
+                    drawerOpen = false
+                    addToHome(app)
+                    android.widget.Toast.makeText(
+                        context,
+                        "已添加到主屏",
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                },
             )
         }
     }
@@ -383,14 +393,7 @@ fun DockBar(
                             .clickable { onLaunch(app) },
                     )
                     if (badge > 0) {
-                        Box(
-                            Modifier
-                                .align(Alignment.TopEnd)
-                                .offset(x = 3.dp, y = (-2).dp)
-                                .size(11.dp)
-                                .background(Color(0xFFFF453A), CircleShape)
-                                .border(1.5.dp, Color.White, CircleShape),
-                        )
+                        BadgeDot(badge, Modifier.align(Alignment.TopEnd).offset(x = 3.dp, y = (-2).dp))
                     }
                 }
             }
@@ -405,6 +408,34 @@ fun DockBar(
                 DrawerGridIcon(Modifier.size(20.dp))
             }
         }
+    }
+}
+
+/** One UI 角标：圆点模式 / 数字模式（跟随 BadgeStore.showNumbers） */
+@Composable
+fun BadgeDot(badge: Int, modifier: Modifier = Modifier) {
+    if (BadgeStore.showNumbers) {
+        Box(
+            modifier
+                .size(19.dp)
+                .background(Color(0xFFFF453A), CircleShape)
+                .border(1.5.dp, Color.White, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                badge.coerceAtMost(99).toString(),
+                fontSize = 11.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    } else {
+        Box(
+            modifier
+                .size(11.dp)
+                .background(Color(0xFFFF453A), CircleShape)
+                .border(1.5.dp, Color.White, CircleShape),
+        )
     }
 }
 
@@ -442,14 +473,7 @@ fun AppIconCell(
                 modifier = Modifier.size(52.dp),
             )
             if (badge > 0) {
-                Box(
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 3.dp, y = (-2).dp)
-                        .size(11.dp)
-                        .background(Color(0xFFFF453A), CircleShape)
-                        .border(1.5.dp, Color.White, CircleShape),
-                )
+                BadgeDot(badge, Modifier.align(Alignment.TopEnd).offset(x = 3.dp, y = (-2).dp))
             }
         }
         if (showLabel) {

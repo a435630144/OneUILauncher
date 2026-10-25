@@ -4,6 +4,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
@@ -15,6 +16,9 @@ object BadgeStore {
 
     var revision by mutableIntStateOf(0)
         private set
+
+    /** 角标样式：true=数字模式，false=圆点模式（One UI 双模式） */
+    var showNumbers by mutableStateOf(false)
 
     fun onPosted(pkg: String, key: String) {
         synchronized(active) {

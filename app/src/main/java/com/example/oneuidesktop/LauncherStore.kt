@@ -48,10 +48,17 @@ class LauncherStore(context: Context) {
         prefs.edit().putBoolean(KEY_LABELS, value).apply()
     }
 
+    fun badgeNumbers(): Boolean = prefs.getBoolean(KEY_BADGE_NUMBERS, false)
+
+    fun setBadgeNumbers(value: Boolean) {
+        prefs.edit().putBoolean(KEY_BADGE_NUMBERS, value).apply()
+    }
+
     companion object {
         private const val KEY_CUSTOM = "custom_order"
         private const val KEY_ORDER = "order"
         private const val KEY_HOME = "home_layout"
         private const val KEY_LABELS = "show_labels"
+        private const val KEY_BADGE_NUMBERS = "badge_numbers"
     }
 }

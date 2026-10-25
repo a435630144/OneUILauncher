@@ -124,10 +124,26 @@ private fun SettingsScreen(onBack: () -> Unit) {
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Text("角标显示数字", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = BadgeStore.showNumbers,
+                    onCheckedChange = {
+                        BadgeStore.showNumbers = it
+                        store.setBadgeNumbers(it)
+                    },
+                )
+            }
+            HorizontalDivider()
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text("时钟测试角标（调试）", modifier = Modifier.weight(1f))
                 TextButton(onClick = {
-                    // 往模拟器时钟应用塞 3 个假角标，用于视觉验证
-                    BadgeStore.debugSet("com.android.deskclock", 3)
+                    // 往模拟器图库塞 2 个假角标，用于视觉验证（图库在主屏第一行）
+                    BadgeStore.debugSet("com.android.gallery3d", 2)
                 }) {
                     Text("显示")
                 }
