@@ -52,6 +52,11 @@ private fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val store = remember { LauncherStore(context) }
     var showLabels by remember { mutableStateOf(store.showLabels()) }
+    val listenerEnabled = remember {
+        androidx.core.app.NotificationManagerCompat
+            .getEnabledListenerPackages(context)
+            .contains(context.packageName)
+    }
 
     Scaffold(
         topBar = {
@@ -92,6 +97,48 @@ private fun SettingsScreen(onBack: () -> Unit) {
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Column(Modifier.weight(1f)) {
+                    Text("通知圆点")
+                    Text(
+                        if (listenerEnabled) "已开启" else "需要通知使用权",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (listenerEnabled) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
+                    )
+                }
+                TextButton(onClick = {
+                    context.startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
+                    )
+                }) {
+                    Text(if (listenerEnabled) "管理" else "去授权")
+                }
+            }
+            HorizontalDivider()
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("时钟测试角标（调试）", modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    // 往模拟器时钟应用塞 3 个假角标，用于视觉验证
+                    BadgeStore.debugSet("com.android.deskclock", 3)
+                }) {
+                    Text("显示")
+                }
+            }
+            HorizontalDivider()
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text("壁纸", modifier = Modifier.weight(1f))
                 TextButton(onClick = {
                     runCatching {
@@ -106,7 +153,7 @@ private fun SettingsScreen(onBack: () -> Unit) {
             }
             HorizontalDivider()
             Text(
-                "OneUI 桌面 v0.2\n抽屉自定义排序 · 文件夹 · 桌面设置",
+                "OneUI 桌面 v0.5\n抽屉自定义排序 · 文件夹 · 桌面设置 · 小组件 · 通知圆点",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(20.dp),

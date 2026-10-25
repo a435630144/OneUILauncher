@@ -2,6 +2,7 @@ package com.example.oneuidesktop
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -857,6 +859,11 @@ fun FolderIcon(
     onOpen: (HomeFolder) -> Unit,
     dim: Boolean = false,
 ) {
+    // 文件夹角标 = 成员应用通知数之和
+    BadgeStore.revision
+    val badge = remember(folder.members, BadgeStore.revision) {
+        folder.members.sumOf { key -> BadgeStore.count(key.substringBefore('/')) }
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -864,21 +871,33 @@ fun FolderIcon(
             .clickable { onOpen(folder) }
             .padding(vertical = 6.dp),
     ) {
-        Box(
-            Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.White.copy(alpha = 0.38f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            val icons = folder.members.mapNotNull { appsByKey[it] }.take(4)
-            Column {
-                icons.chunked(2).take(2).forEach { pair ->
-                    Row {
-                        pair.forEach { Image(it.icon, contentDescription = null, modifier = Modifier.size(19.dp)) }
-                        repeat(2 - pair.size) { Spacer(Modifier.size(19.dp)) }
+        Box {
+            Box(
+                Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.White.copy(alpha = 0.38f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                val icons = folder.members.mapNotNull { appsByKey[it] }.take(4)
+                Column {
+                    icons.chunked(2).take(2).forEach { pair ->
+                        Row {
+                            pair.forEach { Image(it.icon, contentDescription = null, modifier = Modifier.size(19.dp)) }
+                            repeat(2 - pair.size) { Spacer(Modifier.size(19.dp)) }
+                        }
                     }
                 }
+            }
+            if (badge > 0) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 3.dp, y = (-2).dp)
+                        .size(11.dp)
+                        .background(Color(0xFFFF453A), CircleShape)
+                        .border(1.5.dp, Color.White, CircleShape),
+                )
             }
         }
         if (showLabel) {

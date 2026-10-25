@@ -18,6 +18,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -368,13 +370,29 @@ fun DockBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             dockApps.forEach { app ->
-                Image(
-                    bitmap = app.icon,
-                    contentDescription = app.label,
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clickable { onLaunch(app) },
-                )
+                BadgeStore.revision
+                val badge = remember(app.key, BadgeStore.revision) {
+                    BadgeStore.count(app.key.substringBefore('/'))
+                }
+                Box {
+                    Image(
+                        bitmap = app.icon,
+                        contentDescription = app.label,
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clickable { onLaunch(app) },
+                    )
+                    if (badge > 0) {
+                        Box(
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 3.dp, y = (-2).dp)
+                                .size(11.dp)
+                                .background(Color(0xFFFF453A), CircleShape)
+                                .border(1.5.dp, Color.White, CircleShape),
+                        )
+                    }
+                }
             }
             Box(
                 Modifier
@@ -401,6 +419,11 @@ fun AppIconCell(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.90f else 1f)
+    // 通知角标（One UI：图标右上角彩色圆点）
+    BadgeStore.revision
+    val badge = remember(app.key, BadgeStore.revision) {
+        BadgeStore.count(app.key.substringBefore('/'))
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -412,11 +435,23 @@ fun AppIconCell(
             .clickable(interactionSource = interaction, indication = null) { onLaunch(app) }
             .padding(vertical = 6.dp),
     ) {
-        Image(
-            bitmap = app.icon,
-            contentDescription = app.label,
-            modifier = Modifier.size(52.dp),
-        )
+        Box {
+            Image(
+                bitmap = app.icon,
+                contentDescription = app.label,
+                modifier = Modifier.size(52.dp),
+            )
+            if (badge > 0) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 3.dp, y = (-2).dp)
+                        .size(11.dp)
+                        .background(Color(0xFFFF453A), CircleShape)
+                        .border(1.5.dp, Color.White, CircleShape),
+                )
+            }
+        }
         if (showLabel) {
             Spacer(Modifier.height(5.dp))
             Text(
