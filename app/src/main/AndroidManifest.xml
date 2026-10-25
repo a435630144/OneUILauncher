@@ -1,5 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- 承载应用小组件 -->
+    <uses-permission android:name="android.permission.BIND_APPWIDGET" />
+
     <!-- Android 11+ 需要声明才能查询到其他应用的启动入口 -->
     <queries>
         <intent>

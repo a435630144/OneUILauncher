@@ -3,9 +3,11 @@ package com.example.oneuidesktop
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,9 +61,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.roundToInt
 
 /**
@@ -75,6 +80,8 @@ fun HomeScreen(
     pages: List<List<HomeItem?>>,
     dockKeys: List<String>,
     showLabels: Boolean,
+    widgetHost: android.appwidget.AppWidgetHost,
+    widgetManager: android.appwidget.AppWidgetManager,
     onLayoutChange: (List<List<HomeItem?>>, List<String>) -> Unit,
     onOpenDrawer: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
@@ -84,6 +91,7 @@ fun HomeScreen(
     var dragTotal by remember { mutableStateOf(0f) }
     var homeMenuAt by remember { mutableStateOf<Offset?>(null) }
     var openFolderId by remember { mutableStateOf<String?>(null) }
+    var showWidgetPicker by remember { mutableStateOf(false) }
 
     var draggingItem by remember { mutableStateOf<HomeItem?>(null) }
     var dragPos by remember { mutableStateOf(Offset.Zero) }
@@ -143,8 +151,56 @@ fun HomeScreen(
     }
 
     fun removeItem(item: HomeItem) {
+        if (item is HomeWidget) {
+            runCatching { widgetHost.deleteAppWidgetId(item.appWidgetId) }
+        }
         val newPages = pages.map { it.toMutableList() }.toMutableList()
         newPages.forEach { list -> list.removeAll { it?.id == item.id } }
+        onLayoutChange(trim(newPages), dockKeys)
+    }
+
+    val context2 = androidx.compose.ui.platform.LocalContext.current
+
+    /** 选定小组件：分配 id → 绑定 → 放到当前页第一个可容纳的空槽 */
+    fun addWidget(info: android.appwidget.AppWidgetProviderInfo) {
+        val id = widgetHost.allocateAppWidgetId()
+        val bound = widgetManager.bindAppWidgetIdIfAllowed(id, info.provider)
+        if (!bound) {
+            runCatching {
+                context2.startActivity(
+                    android.content.Intent(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_BIND)
+                        .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, id),
+                )
+            }
+        }
+        val (sc, sr) = WidgetCatalog.suggestedSpan(context2, info, spec.cols)
+        val widget = HomeWidget(
+            id = "widget_$id",
+            appWidgetId = id,
+            spanCols = sc.coerceAtMost(spec.cols),
+            spanRows = sr.coerceAtMost(spec.rows - 1),
+        )
+        val pageIdx = pagerState.currentPage.coerceIn(0, pages.size - 1)
+        val newPages = pages.map { it.toMutableList() }.toMutableList()
+        if (newPages.isEmpty()) newPages.add(mutableListOf())
+        val page = newPages[pageIdx]
+        // 找连续空槽（能容纳 span 的起始格），找不到就追加
+        var placed = false
+        for (start in 0 until spec.perPage) {
+            val col = start % spec.cols
+            val row = start / spec.cols
+            if (col + widget.spanCols > spec.cols || row + widget.spanRows > spec.rows) continue
+            val slots = (0 until widget.spanRows).flatMap { r ->
+                (0 until widget.spanCols).map { c -> (row + r) * spec.cols + (col + c) }
+            }
+            val free = slots.all { i -> page.getOrNull(i) == null }
+            if (free) {
+                slots.forEach { i -> while (page.size <= i) page.add(null); page[i] = widget }
+                placed = true
+                break
+            }
+        }
+        if (!placed) page.add(widget)
         onLayoutChange(trim(newPages), dockKeys)
     }
 
@@ -290,12 +346,18 @@ fun HomeScreen(
                 )
             }
             .pointerInput(Unit) {
-                detectTapGestures(
-                    onLongPress = {
-                        homeMenuAt = it
+                // 手写长按检测：down 后 400ms 内未抬起 → 长按成立（空白菜单）
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                        waitForUpOrCancellation()
+                    }
+                    if (up == null) {
+                        homeMenuAt = down.position
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    },
-                )
+                        waitForUpOrCancellation()
+                    }
+                }
             },
     ) {
         Column(Modifier.fillMaxSize()) {
@@ -327,6 +389,8 @@ fun HomeScreen(
                         appsByKey = appsByKey,
                         showLabels = showLabels,
                         dimId = draggingItem?.id,
+                        widgetHost = widgetHost,
+                        widgetManager = widgetManager,
                         onLaunch = onLaunch,
                         onOpenFolder = { openFolderId = it.id },
                         onCellPosition = { id, coords -> cellCoords[id] = coords },
@@ -474,6 +538,13 @@ fun HomeScreen(
             Box(Modifier.offset { IntOffset(pos.x.roundToInt(), pos.y.roundToInt()) }) {
                 DropdownMenu(expanded = true, onDismissRequest = { homeMenuAt = null }) {
                     DropdownMenuItem(
+                        text = { Text("小组件") },
+                        onClick = {
+                            homeMenuAt = null
+                            showWidgetPicker = true
+                        },
+                    )
+                    DropdownMenuItem(
                         text = { Text("壁纸") },
                         onClick = {
                             homeMenuAt = null
@@ -489,6 +560,18 @@ fun HomeScreen(
                     )
                 }
             }
+        }
+
+        // 小组件选择器
+        if (showWidgetPicker) {
+            WidgetPickerDialog(
+                context2 = context2,
+                onPick = { info ->
+                    showWidgetPicker = false
+                    addWidget(info)
+                },
+                onDismiss = { showWidgetPicker = false },
+            )
         }
 
         // 文件夹弹窗
@@ -529,6 +612,73 @@ fun HomeScreen(
 }
 
 @Composable
+private fun WidgetPickerDialog(
+    context2: android.content.Context,
+    onPick: (android.appwidget.AppWidgetProviderInfo) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val providers = remember { WidgetCatalog.installed(context2) }
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(32.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(20.dp)) {
+                Text("小组件", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(12.dp))
+                androidx.compose.foundation.lazy.LazyColumn(
+                    modifier = Modifier.height(420.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                ) {
+                    if (providers.isEmpty()) {
+                        item {
+                            Text(
+                                "系统暂无可用小组件",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 24.dp),
+                            )
+                        }
+                    }
+                    items(providers.size) { idx ->
+                        val info = providers[idx]
+                        val label = remember(info) { WidgetCatalog.label(context2, info) }
+                        val preview = remember(info) { WidgetCatalog.preview(context2, info, 480) }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(20.dp))
+                                .clickable { onPick(info) }
+                                .padding(10.dp),
+                        ) {
+                            if (preview != null) {
+                                Image(
+                                    bitmap = preview,
+                                    contentDescription = label,
+                                    modifier = Modifier
+                                        .width(120.dp)
+                                        .height(72.dp),
+                                )
+                            } else {
+                                Box(
+                                    Modifier
+                                        .size(48.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Text(label, maxLines = 2)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PageGrid(
     items: List<HomeItem?>,
     spec: GridSpec,
@@ -537,6 +687,8 @@ private fun PageGrid(
     appsByKey: Map<String, AppInfo>,
     showLabels: Boolean,
     dimId: String?,
+    widgetHost: android.appwidget.AppWidgetHost,
+    widgetManager: android.appwidget.AppWidgetManager,
     onLaunch: (AppInfo) -> Unit,
     onOpenFolder: (HomeFolder) -> Unit,
     onCellPosition: (String, LayoutCoordinates) -> Unit,
@@ -544,11 +696,44 @@ private fun PageGrid(
     onDragMove: (Offset) -> Unit,
     onDragEnd: () -> Unit,
 ) {
-    Box(
+    androidx.compose.foundation.layout.BoxWithConstraints(
         Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
+        val cellW = maxWidth / spec.cols
+        val cellH = maxHeight / spec.rows
+        // 小组件层（跨格绝对定位）
+        items.forEachIndexed { index, item ->
+            if (item is HomeWidget) {
+                val col = index % spec.cols
+                val row = index / spec.cols
+                AndroidView(
+                    factory = { ctx ->
+                        WidgetCatalog.createView(widgetHost, widgetManager, item.appWidgetId)
+                            ?: android.widget.FrameLayout(ctx)
+                    },
+                    update = { },
+                    modifier = Modifier
+                        .offset(x = cellW * col, y = cellH * row)
+                        .size(cellW * item.spanCols, cellH * item.spanRows)
+                        .pointerInput(item.appWidgetId) {
+                            // 长按小组件 → 拖动/菜单；短按交给小组件自身
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                    waitForUpOrCancellation()
+                                }
+                                if (up == null) {
+                                    onStartDrag(item, down.position)
+                                    waitForUpOrCancellation()
+                                }
+                            }
+                        },
+                )
+            }
+        }
+        // 图标网格
         Column(Modifier.fillMaxSize()) {
             for (row in 0 until spec.rows) {
                 Row(Modifier.weight(1f).fillMaxWidth()) {
@@ -620,6 +805,8 @@ private fun HomeItemContent(
         is HomeApp -> appsByKey[item.id]?.let { app ->
             AppIconCell(app = app, onLaunch = onLaunch, darkText = false, showLabel = showLabels, dim = dim)
         }
+        // 小组件由 PageGrid 的绝对定位层渲染
+        is HomeWidget -> Unit
         is HomeFolder -> FolderIcon(
             folder = item,
             appsByKey = appsByKey,
@@ -636,6 +823,12 @@ private fun FloatingItemContent(item: HomeItem, appsByKey: Map<String, AppInfo>)
         is HomeApp -> appsByKey[item.id]?.let { app ->
             Image(bitmap = app.icon, contentDescription = null, modifier = Modifier.size(52.dp))
         }
+        is HomeWidget -> Box(
+            Modifier
+                .size(88.dp, 56.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White.copy(alpha = 0.5f)),
+        )
         is HomeFolder -> Box(
             Modifier
                 .size(52.dp)

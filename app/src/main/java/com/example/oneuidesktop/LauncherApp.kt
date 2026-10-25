@@ -118,6 +118,14 @@ fun LauncherApp() {
 
     val appsByKey = remember(allApps) { allApps.associateBy { it.key } }
 
+    // 小组件宿主：可见期间监听更新
+    val widgetHost = remember { LauncherWidgetHost(context) }
+    val widgetManager = remember { android.appwidget.AppWidgetManager.getInstance(context) }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        runCatching { widgetHost.startListening() }
+        onDispose { runCatching { widgetHost.stopListening() } }
+    }
+
     fun launch(app: AppInfo) {
         runCatching { context.startActivity(app.launchIntent) }
     }
@@ -221,6 +229,8 @@ fun LauncherApp() {
                 pages = homePages,
                 dockKeys = dockKeys,
                 showLabels = showLabels,
+                widgetHost = widgetHost,
+                widgetManager = widgetManager,
                 onLayoutChange = { pages, dock -> changeLayout(pages, dock) },
                 onOpenDrawer = { drawerOpen = true },
                 onLaunch = { launch(it) },

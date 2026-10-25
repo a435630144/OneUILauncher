@@ -28,6 +28,14 @@ data class HomeFolder(
     val members: List<String>,
 ) : HomeItem
 
+/** 主屏小组件：AppWidgetHost 分配的 id + 占用网格尺寸 */
+data class HomeWidget(
+    override val id: String,
+    val appWidgetId: Int,
+    val spanCols: Int,
+    val spanRows: Int,
+) : HomeItem
+
 data class HomeLayout(val pages: List<List<HomeItem?>>, val dock: List<String>)
 
 fun defaultHomeLayout(appKeys: List<String>): HomeLayout {
@@ -42,6 +50,9 @@ fun HomeLayout.toJson(): String {
         is HomeApp -> JSONObject().put("t", "a").put("id", item.id)
         is HomeFolder -> JSONObject().put("t", "f").put("id", item.id)
             .put("name", item.name).put("m", JSONArray(item.members))
+        is HomeWidget -> JSONObject().put("t", "w").put("id", item.id)
+            .put("wid", item.appWidgetId)
+            .put("sc", item.spanCols).put("sr", item.spanRows)
     }
     val pagesArr = JSONArray()
     for (page in pages) {
@@ -66,6 +77,12 @@ fun parseHomeLayout(raw: String): HomeLayout? = try {
                 val obj = arr.getJSONObject(j)
                 val item: HomeItem? = when (obj.getString("t")) {
                     "a" -> HomeApp(obj.getString("id"))
+                    "w" -> HomeWidget(
+                        id = obj.getString("id"),
+                        appWidgetId = obj.getInt("wid"),
+                        spanCols = obj.optInt("sc", 4),
+                        spanRows = obj.optInt("sr", 2),
+                    )
                     "f" -> HomeFolder(
                         id = obj.getString("id"),
                         name = obj.optString("name", "文件夹"),
