@@ -1,0 +1,22 @@
+# One UI 覆盖层文件清单（相对仓库根目录）
+#
+# 这些文件是相对 Lawnchair 15-dev (505dbc4) 的全部改动。
+# 用 tools/export-overlay.ps1 可以把它们套到一份干净的 Lawnchair checkout 上，
+# 便于跟进上游更新。其余文件（README / docs / legacy / NOTICE / LICENSE 等）
+# 属于项目自身内容，不需要覆盖到上游。
+build.gradle
+gradle.properties
+gradle/wrapper/gradle-wrapper.properties
+lawnchair/res/values/config.xml
+lawnchair/res/values/strings.xml
+lawnchair/res/xml/default_workspace_4x6.xml
+lawnchair/res/xml/default_workspace_5x5.xml
+lawnchair/res/xml/device_profiles.xml
+lawnchair/res/layout/launcher.xml
+lawnchair/res/drawable/ic_launcher_home.xml
+lawnchair/res/drawable/oneui_icon_background.xml
+lawnchair/res/drawable/oneui_icon_foreground.xml
+lawnchair/src/app/lawnchair/preferences/PreferenceManager.kt
+lawnchair/src/app/lawnchair/ui/theme/Shape.kt
+lawnchair/src/app/lawnchair/ui/theme/Type.kt
+tools/fetch-sesl.ps1

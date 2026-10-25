@@ -192,3 +192,27 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 5. **设置页收口**：只保留桌面相关项，其余隐藏；二级页改用 One UI 分组卡片。
 6. **裁剪 Quickstep**：15-dev 已无 `withoutQuickstep` flavor，需要自己接一个
    不带 recents 的构建变体，把 332 MB 的基线压下来。
+
+## 9. 仓库与上游同步
+
+本仓库不是 Lawnchair 的完整历史 fork：基线快照 `505dbc4` 来自一份 shallow
+clone，所以历史里只有一个「Import Lawnchair 15-dev」根提交，而不是上游完整的
+提交图。这样做的好处是仓库自包含、clone 后无需联网即可构建
+（`platform_frameworks_libs_systemui` 也已从 submodule 改为随仓库分发的普通源码）。
+
+One UI 的改动被刻意收在十几个文件里（见 `tools/oneui-overlay.txt`）。
+跟进 Lawnchair 上游时：
+
+1. 重新 clone 一份干净的 Lawnchair 15-dev（或更高版本）。
+2. 运行 `.\tools\export-overlay.ps1 -Target <clean-checkout>`。
+3. 解决冲突（主要是 `device_profiles.xml`、`PreferenceManager.kt`、`launcher.xml`）。
+4. 在目标仓库构建，并按 §7 的清单验证。
+5. 把结果提交回本仓库，替换 `src/`、`res/`、`lawnchair/` 等基线目录。
+
+这样即使 Lawnchair 上游停更、或以后要换回 SESL/自研控件，也只需要换基线 +
+重放覆盖层，不会把 One UI 的视觉代码和 Launcher3 内核绑死。
+
+远程：
+
+- `origin`   `https://github.com/a435630144/OneUILauncher.git`
+- `upstream` `https://github.com/LawnchairLauncher/lawnchair.git`（只作参照）
