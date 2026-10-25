@@ -1,6 +1,8 @@
 package com.example.oneuidesktop
 
+import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -55,6 +57,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.ImeAction
@@ -82,6 +85,7 @@ fun AppDrawer(
     onLaunch: (AppInfo) -> Unit,
     onOpenSettings: () -> Unit,
     onDismiss: () -> Unit,
+    onAddToHome: (AppInfo) -> Unit,
 ) {
     var list by remember { mutableStateOf(apps) }
     LaunchedEffect(apps) { list = apps }
@@ -99,6 +103,8 @@ fun AppDrawer(
     val density = LocalDensity.current
     var lastFlipAt by remember { mutableStateOf(0L) }
     var dismissDragTotal by remember { mutableStateOf(0f) }
+    var menuApp by remember { mutableStateOf<AppInfo?>(null) }
+    var dragMoved by remember { mutableStateOf(0f) }
 
     val isLandscape = LocalConfiguration.current.orientation ==
         Configuration.ORIENTATION_LANDSCAPE
@@ -194,6 +200,7 @@ fun AppDrawer(
         val cc = cellCoords[app.key]
         if (dragging == null && gc != null && cc != null) {
             dragging = app
+            dragMoved = 0f
             dragPos = cc.positionInRoot() - gc.positionInRoot() + offsetInCell
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         }
@@ -301,6 +308,7 @@ fun AppDrawer(
                         onStartDrag = startDrag,
                         onDragMove = { amount ->
                             val d = dragging
+                            dragMoved += amount.getDistance()
                             dragPos += amount
                             if (d != null) handleMove(d, dragPos)
                         },
@@ -308,9 +316,60 @@ fun AppDrawer(
                             val dragged = dragging
                             val pos = dragPos
                             dragging = null
-                            if (dragged != null) dropAt(dragged, pos)
+                            if (dragged != null) {
+                                if (dragMoved < with(density) { 12.dp.toPx() }) {
+                                    // 长按未拖动 → 弹应用菜单
+                                    menuApp = dragged
+                                } else {
+                                    dropAt(dragged, pos)
+                                }
+                            }
                         },
                     )
+                }
+            }
+
+            // 长按应用菜单（添加到主屏 / 应用信息 / 卸载）
+            menuApp?.let { app ->
+                val context = LocalContext.current
+                val pkg = app.key.substringBefore('/')
+                Box(Modifier.offset { IntOffset(dragPos.x.roundToInt(), dragPos.y.roundToInt()) }) {
+                    DropdownMenu(expanded = true, onDismissRequest = { menuApp = null }) {
+                        DropdownMenuItem(
+                            text = { Text("添加到主屏") },
+                            onClick = {
+                                menuApp = null
+                                onAddToHome(app)
+                                onDismiss()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("应用信息") },
+                            onClick = {
+                                menuApp = null
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(
+                                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                            Uri.parse("package:$pkg"),
+                                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                    )
+                                }
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("卸载") },
+                            onClick = {
+                                menuApp = null
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkg"))
+                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                    )
+                                }
+                            },
+                        )
+                    }
                 }
             }
 

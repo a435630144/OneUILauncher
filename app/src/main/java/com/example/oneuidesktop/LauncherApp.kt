@@ -128,6 +128,26 @@ fun LauncherApp() {
         store.saveHomeLayout(HomeLayout(pages, dock))
     }
 
+    // 抽屉「添加到主屏」：找第一个空槽，找不到就追加到最后一页
+    fun addToHome(app: AppInfo) {
+        if (homePages.any { page -> page.any { it?.id == app.key } }) return
+        val newPages = homePages.map { it.toMutableList() }.toMutableList()
+        outer@ for (pi in newPages.indices) {
+            val page = newPages[pi]
+            for (si in 0 until gridSpec(false).perPage) {
+                if (si >= page.size || page[si] == null) {
+                    while (page.size <= si) page.add(null)
+                    page[si] = HomeApp(app.key)
+                    break@outer
+                }
+            }
+        }
+        if (newPages.none { page -> page.any { it?.id == app.key } }) {
+            (newPages.lastOrNull() ?: mutableListOf<HomeItem?>().also { newPages.add(it) }).add(HomeApp(app.key))
+        }
+        changeLayout(newPages, dockKeys)
+    }
+
     // 设置页返回后刷新设置项
     val settingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -238,6 +258,9 @@ fun LauncherApp() {
                     settingsLauncher.launch(Intent(context, SettingsActivity::class.java))
                 },
                 onDismiss = { drawerOpen = false },
+                onAddToHome = { app ->
+                    addToHome(app)
+                },
             )
         }
     }

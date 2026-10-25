@@ -49,6 +49,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -86,6 +87,8 @@ fun HomeScreen(
 
     var draggingItem by remember { mutableStateOf<HomeItem?>(null) }
     var dragPos by remember { mutableStateOf(Offset.Zero) }
+    var dragMoved by remember { mutableStateOf(0f) }
+    var menuItem by remember { mutableStateOf<HomeItem?>(null) }
     var gridSize by remember { mutableStateOf(IntSize.Zero) }
     var gridCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var dockCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -122,6 +125,27 @@ fun HomeScreen(
         val col = ((pos.x - padH) / cellW).toInt().coerceIn(0, spec.cols - 1)
         val row = ((pos.y - padV) / cellH).toInt().coerceIn(0, spec.rows - 1)
         return row * spec.cols + col
+    }
+
+    /** 长按未拖动 → 弹菜单；解散文件夹（成员回原槽位） */
+    fun disbandFolder(folder: HomeFolder) {
+        val newPages = pages.map { it.toMutableList() }.toMutableList()
+        val pageIdx = newPages.indexOfFirst { list -> list.any { it is HomeFolder && it.id == folder.id } }
+        if (pageIdx >= 0) {
+            val list = newPages[pageIdx]
+            val idx = list.indexOfFirst { it is HomeFolder && it.id == folder.id }
+            val f = list.removeAt(idx) as HomeFolder
+            f.members.forEachIndexed { k, key ->
+                list.add(idx + k, HomeApp(key))
+            }
+        }
+        onLayoutChange(trim(newPages), dockKeys)
+    }
+
+    fun removeItem(item: HomeItem) {
+        val newPages = pages.map { it.toMutableList() }.toMutableList()
+        newPages.forEach { list -> list.removeAll { it?.id == item.id } }
+        onLayoutChange(trim(newPages), dockKeys)
     }
 
     fun handleDragEnd(dragged: HomeItem) {
@@ -317,6 +341,7 @@ fun HomeScreen(
                         },
                         onDragMove = { amount ->
                             val d = draggingItem
+                            dragMoved += amount.getDistance()
                             dragPos += amount
                             if (d != null) handleMove(d, dragPos)
                         },
@@ -324,9 +349,79 @@ fun HomeScreen(
                             val dragged = draggingItem
                             val pos = dragPos
                             draggingItem = null
-                            if (dragged != null) handleDragEnd(dragged)
+                            if (dragged != null) {
+                                if (dragMoved < with(density) { 12.dp.toPx() }) {
+                                    menuItem = dragged
+                                } else {
+                                    handleDragEnd(dragged)
+                                }
+                            }
                         },
                     )
+                }
+
+                // 主屏图标长按菜单
+                menuItem?.let { item ->
+                    val context = LocalContext.current
+                    Box(Modifier.offset { IntOffset(dragPos.x.roundToInt(), dragPos.y.roundToInt()) }) {
+                        DropdownMenu(expanded = true, onDismissRequest = { menuItem = null }) {
+                            if (item is HomeApp) {
+                                DropdownMenuItem(
+                                    text = { Text("移除") },
+                                    onClick = {
+                                        menuItem = null
+                                        removeItem(item)
+                                    },
+                                )
+                            }
+                            if (item is HomeFolder) {
+                                DropdownMenuItem(
+                                    text = { Text("编辑文件夹") },
+                                    onClick = {
+                                        menuItem = null
+                                        openFolderId = item.id
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("解散文件夹") },
+                                    onClick = {
+                                        menuItem = null
+                                        disbandFolder(item)
+                                    },
+                                )
+                            }
+                            item.id.substringBefore('/').takeIf { item is HomeApp }?.let { pkg ->
+                                DropdownMenuItem(
+                                    text = { Text("应用信息") },
+                                    onClick = {
+                                        menuItem = null
+                                        runCatching {
+                                            context.startActivity(
+                                                android.content.Intent(
+                                                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                    android.net.Uri.parse("package:$pkg"),
+                                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                                            )
+                                        }
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("卸载") },
+                                    onClick = {
+                                        menuItem = null
+                                        runCatching {
+                                            context.startActivity(
+                                                android.content.Intent(
+                                                    android.content.Intent.ACTION_DELETE,
+                                                    android.net.Uri.parse("package:$pkg"),
+                                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // 跟随手指的浮动图标
