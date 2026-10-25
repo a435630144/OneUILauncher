@@ -79,7 +79,7 @@ fun LauncherApp() {
     var drawerOpen by remember { mutableStateOf(false) }
     var showLabels by remember { mutableStateOf(store.showLabels()) }
 
-    var homeItems by remember { mutableStateOf<List<HomeItem>>(emptyList()) }
+    var homePages by remember { mutableStateOf<List<List<HomeItem?>>>(emptyList()) }
     var dockKeys by remember { mutableStateOf<List<String>>(emptyList()) }
     var layoutLoaded by remember { mutableStateOf(false) }
 
@@ -104,11 +104,11 @@ fun LauncherApp() {
         if (allApps.isNotEmpty() && !layoutLoaded) {
             val saved = store.loadHomeLayout()
             if (saved != null) {
-                homeItems = saved.pages.firstOrNull() ?: emptyList()
+                homePages = saved.pages
                 dockKeys = saved.dock
             } else {
                 val def = defaultHomeLayout(allApps.map { it.key })
-                homeItems = def.pages.first()
+                homePages = def.pages
                 dockKeys = def.dock
                 store.saveHomeLayout(def)
             }
@@ -122,10 +122,10 @@ fun LauncherApp() {
         runCatching { context.startActivity(app.launchIntent) }
     }
 
-    fun changeLayout(items: List<HomeItem>, dock: List<String>) {
-        homeItems = items
+    fun changeLayout(pages: List<List<HomeItem?>>, dock: List<String>) {
+        homePages = pages
         dockKeys = dock
-        store.saveHomeLayout(HomeLayout(listOf(items), dock))
+        store.saveHomeLayout(HomeLayout(pages, dock))
     }
 
     // 设置页返回后刷新设置项
@@ -198,10 +198,10 @@ fun LauncherApp() {
         ) {
             HomeScreen(
                 appsByKey = appsByKey,
-                items = homeItems,
+                pages = homePages,
                 dockKeys = dockKeys,
                 showLabels = showLabels,
-                onLayoutChange = { items, dock -> changeLayout(items, dock) },
+                onLayoutChange = { pages, dock -> changeLayout(pages, dock) },
                 onOpenDrawer = { drawerOpen = true },
                 onLaunch = { launch(it) },
                 onOpenSettings = {
@@ -237,6 +237,7 @@ fun LauncherApp() {
                 onOpenSettings = {
                     settingsLauncher.launch(Intent(context, SettingsActivity::class.java))
                 },
+                onDismiss = { drawerOpen = false },
             )
         }
     }
@@ -339,7 +340,6 @@ fun DockBar(
                     contentDescription = app.label,
                     modifier = Modifier
                         .size(50.dp)
-                        .clip(CircleShape)
                         .clickable { onLaunch(app) },
                 )
             }

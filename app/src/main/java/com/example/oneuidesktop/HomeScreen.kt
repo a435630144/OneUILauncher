@@ -19,21 +19,24 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,18 +58,23 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * One UI 主屏：时钟 + 图标网格（长按拖动排序 / 拖到图标上建文件夹）+ Dock。
+ * One UI 主屏：时钟 + 多页图标网格（HorizontalPager，可空槽位）+ Dock。
+ * - 页内长按拖动排序（槽位语义）/ 拖到图标上建文件夹 / 拖入 Dock 换图标 / 拖到应用上交换位置
+ * - 拖到左右边缘自动翻页；最后一页右边缘页满时移入新页
+ * - 空白处长按 → 壁纸 / 桌面设置
  */
 @Composable
 fun HomeScreen(
     appsByKey: Map<String, AppInfo>,
-    items: List<HomeItem>,
+    pages: List<List<HomeItem?>>,
     dockKeys: List<String>,
     showLabels: Boolean,
-    onLayoutChange: (List<HomeItem>, List<String>) -> Unit,
+    onLayoutChange: (List<List<HomeItem?>>, List<String>) -> Unit,
     onOpenDrawer: () -> Unit,
     onLaunch: (AppInfo) -> Unit,
     onOpenSettings: () -> Unit,
@@ -76,10 +84,6 @@ fun HomeScreen(
     var homeMenuAt by remember { mutableStateOf<Offset?>(null) }
     var openFolderId by remember { mutableStateOf<String?>(null) }
 
-    val isLandscape = LocalConfiguration.current.orientation ==
-        android.content.res.Configuration.ORIENTATION_LANDSCAPE
-    val spec = remember(isLandscape) { gridSpec(isLandscape) }
-
     var draggingItem by remember { mutableStateOf<HomeItem?>(null) }
     var dragPos by remember { mutableStateOf(Offset.Zero) }
     var gridSize by remember { mutableStateOf(IntSize.Zero) }
@@ -88,10 +92,25 @@ fun HomeScreen(
     val cellCoords = remember { mutableMapOf<String, LayoutCoordinates>() }
     val haptics = LocalHapticFeedback.current
     val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    var lastFlipAt by remember { mutableStateOf(0L) }
 
-    val openFolderResolved = items.asSequence()
-        .filterIsInstance<HomeFolder>()
-        .firstOrNull { it.id == openFolderId }
+    val isLandscape = LocalConfiguration.current.orientation ==
+        android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val spec = remember(isLandscape) { gridSpec(isLandscape) }
+
+    val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
+
+    /** 尾部空页/尾槽清理（至少保留 1 页） */
+    fun trim(pagesList: MutableList<MutableList<HomeItem?>>): List<List<HomeItem?>> {
+        var end = pagesList.size
+        while (end > 1 && pagesList[end - 1].all { it == null }) end--
+        return pagesList.subList(0, end).map { page ->
+            var e = page.size
+            while (e > 0 && page[e - 1] == null) e--
+            page.subList(0, e).toList()
+        }
+    }
 
     fun cellIndexAt(pos: Offset): Int {
         if (gridSize == IntSize.Zero) return -1
@@ -108,7 +127,7 @@ fun HomeScreen(
     fun handleDragEnd(dragged: HomeItem) {
         val dc = dockCoords
         val gc = gridCoords
-        // 拖到 Dock：替换对应槽位的应用，旧应用回到网格末尾
+        // 拖到 Dock：替换对应槽位的应用，旧应用回到第一页末尾
         if (dc != null && gc != null && dragged is HomeApp) {
             val rootPos = gc.positionInRoot() + dragPos
             val local = rootPos - dc.positionInRoot()
@@ -118,56 +137,119 @@ fun HomeScreen(
                 val slot = (local.x / (dc.size.width / 5f)).toInt().coerceIn(0, 4)
                 if (slot < 4 && dockKeys.getOrNull(slot) != dragged.id) {
                     val oldKey = dockKeys.getOrNull(slot)
-                    val newItems = items.filterNot { it.id == dragged.id }.toMutableList()
-                    if (!oldKey.isNullOrEmpty() && oldKey != dragged.id) newItems.add(HomeApp(oldKey))
+                    val newPages = pages.map { it.toMutableList() }.toMutableList()
+                    newPages.forEach { list -> list.removeAll { it?.id == dragged.id } }
+                    if (!oldKey.isNullOrEmpty() && oldKey != dragged.id) {
+                        val firstPage = newPages.firstOrNull() ?: mutableListOf<HomeItem?>()
+                        if (newPages.isEmpty()) newPages.add(firstPage)
+                        firstPage.add(HomeApp(oldKey))
+                    }
                     val newDock = dockKeys.toMutableList()
                     while (newDock.size < 4) newDock.add("")
                     newDock[slot] = dragged.id
-                    onLayoutChange(newItems, newDock.filter { it.isNotEmpty() })
+                    onLayoutChange(trim(newPages), newDock.filter { it.isNotEmpty() })
                     return
                 }
             }
         }
+        val page = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
         val index = cellIndexAt(dragPos)
         if (index < 0) return
-        val from = items.indexOf(dragged)
-        if (from < 0) return
-        val target = items.getOrNull(index)
-        val newList = items.toMutableList()
+        val fromPage = pages.indexOfFirst { it.any { it === dragged } }
+        if (fromPage < 0) return
+        val fromSlot = pages[fromPage].indexOfFirst { it === dragged }
+        val newPages = pages.map { it.toMutableList() }.toMutableList()
+        val target = pages.getOrNull(page)?.getOrNull(index)
         when {
             target == null || target.id == dragged.id -> {
-                newList.removeAt(from)
-                newList.add(index.coerceAtMost(newList.size), dragged)
-                onLayoutChange(newList, dockKeys)
+                // 移动到目标槽位（空白格或原位）
+                newPages[fromPage][fromSlot] = null
+                while (newPages.size <= page) newPages.add(mutableListOf())
+                val dst = newPages[page]
+                while (dst.size <= index) dst.add(null)
+                dst[index] = dragged
             }
             dragged is HomeFolder -> {
-                newList.removeAt(from)
-                newList.add(index.coerceAtMost(newList.size), dragged)
-                onLayoutChange(newList, dockKeys)
+                // 文件夹拖到应用上：交换位置
+                val dst = newPages[page]
+                val tIdx = dst.indexOfFirst { it === target }
+                if (tIdx >= 0) {
+                    dst[tIdx] = dragged
+                    newPages[fromPage][fromSlot] = target
+                }
             }
-            target is HomeApp -> {
-                newList.removeAt(from)
-                val targetIdx = newList.indexOf(target)
-                if (targetIdx >= 0) {
-                    newList[targetIdx] = HomeFolder(
+            dragged is HomeApp && target is HomeApp -> {
+                // 应用叠放建文件夹
+                newPages[fromPage][fromSlot] = null
+                val dst = newPages[page]
+                val tIdx = dst.indexOfFirst { it === target }
+                if (tIdx >= 0) {
+                    dst[tIdx] = HomeFolder(
                         id = "folder_${System.currentTimeMillis()}",
                         name = "文件夹",
                         members = listOf(target.id, dragged.id),
                     )
                 }
-                onLayoutChange(newList, dockKeys)
             }
-            target is HomeFolder -> {
-                newList.removeAt(from)
-                val targetIdx = newList.indexOf(target)
-                if (targetIdx >= 0) {
-                    newList[targetIdx] = target.copy(members = target.members + dragged.id)
+            dragged is HomeApp && target is HomeFolder -> {
+                // 拖入已有文件夹
+                newPages[fromPage][fromSlot] = null
+                val dst = newPages[page]
+                val tIdx = dst.indexOfFirst { it === target }
+                if (tIdx >= 0) {
+                    dst[tIdx] = target.copy(members = target.members + dragged.id)
                 }
-                onLayoutChange(newList, dockKeys)
+            }
+        }
+        onLayoutChange(trim(newPages), dockKeys)
+    }
+
+    /** 拖动中的边缘处理：左右自动翻页；最后一页右边缘页满时移入新页 */
+    fun handleMove(dragged: HomeItem, pos: Offset) {
+        if (gridSize == IntSize.Zero) return
+        val padH = with(density) { 16.dp.toPx() }
+        val edge = with(density) { 48.dp.toPx() }
+        val page = pagerState.currentPage
+        val now = System.currentTimeMillis()
+        if (now - lastFlipAt <= 450) return
+        when {
+            pos.x < padH + edge && page > 0 -> {
+                lastFlipAt = now
+                scope.launch { pagerState.animateScrollToPage(page - 1) }
+            }
+            pos.x > gridSize.width - padH - edge && page < pagerState.pageCount - 1 -> {
+                lastFlipAt = now
+                scope.launch { pagerState.animateScrollToPage(page + 1) }
+            }
+            pos.x > gridSize.width - padH - edge -> {
+                // 最后一页右边缘：页满则把被拖项放到新页并跟过去
+                lastFlipAt = now
+                val cur = pages.getOrNull(page) ?: return
+                val pageFull = cur.count { it != null } >= spec.perPage
+                if (pageFull) {
+                    val fromPage = pages.indexOfFirst { it.any { it === dragged } }
+                    if (fromPage >= 0) {
+                        val fromSlot = pages[fromPage].indexOfFirst { it === dragged }
+                        val newPages = pages.map { it.toMutableList() }.toMutableList()
+                        newPages[fromPage][fromSlot] = null
+                        newPages.add(mutableListOf(dragged))
+                        onLayoutChange(trim(newPages), dockKeys)
+                        scope.launch {
+                            snapshotFlow { pagerState.pageCount }.first { it > page }
+                            pagerState.animateScrollToPage(pagerState.pageCount - 1)
+                        }
+                    }
+                }
             }
         }
     }
 
+    val openFolderResolved = pages.asSequence()
+        .flatMap { it.asSequence() }
+        .filterIsInstance<HomeFolder>()
+        .firstOrNull { it.id == openFolderId }
+
+    val highlightPage = if (draggingItem != null) pagerState.currentPage else -1
     val highlightIndex = if (draggingItem != null) cellIndexAt(dragPos) else -1
 
     Box(
@@ -182,6 +264,14 @@ fun HomeScreen(
                         dragTotal += amount
                     },
                 )
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = {
+                        homeMenuAt = it
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    },
+                )
             },
     ) {
         Column(Modifier.fillMaxSize()) {
@@ -190,7 +280,6 @@ fun HomeScreen(
                     .statusBarsPadding()
                     .padding(start = 28.dp, top = 18.dp, bottom = 8.dp),
             )
-            // 图标网格
             Box(
                 Modifier
                     .weight(1f)
@@ -198,76 +287,79 @@ fun HomeScreen(
                     .onGloballyPositioned {
                         gridCoords = it
                         gridSize = it.size
-                    }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    },
             ) {
-                Column(Modifier.fillMaxSize()) {
-                    for (row in 0 until spec.rows) {
-                        Row(Modifier.weight(1f).fillMaxWidth()) {
-                            for (col in 0 until spec.cols) {
-                                val index = row * spec.cols + col
-                                val item = items.getOrNull(index)
-                                Box(Modifier.weight(1f).fillMaxHeight()) {
-                                    if (index == highlightIndex && draggingItem != null) {
-                                        Box(
-                                            Modifier
-                                                .fillMaxSize()
-                                                .padding(7.dp)
-                                                .background(
-                                                    Color.White.copy(alpha = 0.18f),
-                                                    RoundedCornerShape(20.dp),
-                                                ),
-                                        )
-                                    }
-                                    if (item != null) {
-                                        key(item.id) {
-                                            Box(
-                                                Modifier
-                                                    .fillMaxSize()
-                                                    .onGloballyPositioned { cellCoords[item.id] = it }
-                                                    .pointerInput(item.id) {
-                                                        detectDragGesturesAfterLongPress(
-                                                            onDragStart = { offset ->
-                                                                val gc = gridCoords
-                                                                val cc = cellCoords[item.id]
-                                                                if (draggingItem == null && gc != null && cc != null) {
-                                                                    draggingItem = item
-                                                                    dragPos = cc.positionInRoot() - gc.positionInRoot() + offset
-                                                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                }
-                                                            },
-                                                            onDrag = { change, amount ->
-                                                                change.consume()
-                                                                dragPos += amount
-                                                            },
-                                                            onDragEnd = {
-                                                                val dragged = draggingItem
-                                                                draggingItem = null
-                                                                if (dragged != null) handleDragEnd(dragged)
-                                                            },
-                                                            onDragCancel = { draggingItem = null },
-                                                        )
-                                                    },
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                HomeItemContent(
-                                                    item = item,
-                                                    appsByKey = appsByKey,
-                                                    showLabels = showLabels,
-                                                    onLaunch = onLaunch,
-                                                    onOpenFolder = { openFolderId = it.id },
-                                                    dim = draggingItem?.id == item.id,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                HorizontalPager(
+                    state = pagerState,
+                    userScrollEnabled = draggingItem == null,
+                    modifier = Modifier.fillMaxSize(),
+                ) { page ->
+                    val items = pages.getOrNull(page) ?: emptyList()
+                    PageGrid(
+                        items = items,
+                        spec = spec,
+                        page = page,
+                        highlightIndex = if (highlightPage == page) highlightIndex else -1,
+                        appsByKey = appsByKey,
+                        showLabels = showLabels,
+                        dimId = draggingItem?.id,
+                        onLaunch = onLaunch,
+                        onOpenFolder = { openFolderId = it.id },
+                        onCellPosition = { id, coords -> cellCoords[id] = coords },
+                        onStartDrag = { item, offset ->
+                            val gc = gridCoords
+                            val cc = cellCoords[item.id]
+                            if (draggingItem == null && gc != null && cc != null) {
+                                draggingItem = item
+                                dragPos = cc.positionInRoot() - gc.positionInRoot() + offset
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
-                        }
+                        },
+                        onDragMove = { amount ->
+                            val d = draggingItem
+                            dragPos += amount
+                            if (d != null) handleMove(d, dragPos)
+                        },
+                        onDragEnd = {
+                            val dragged = draggingItem
+                            val pos = dragPos
+                            draggingItem = null
+                            if (dragged != null) handleDragEnd(dragged)
+                        },
+                    )
+                }
+
+                // 跟随手指的浮动图标
+                draggingItem?.let { item ->
+                    val iconHalf = with(density) { 28.dp.toPx() }
+                    Box(
+                        Modifier
+                            .offset {
+                                IntOffset(
+                                    (dragPos.x - iconHalf).roundToInt(),
+                                    (dragPos.y - iconHalf).roundToInt(),
+                                )
+                            }
+                            .size(56.dp)
+                            .graphicsLayer {
+                                scaleX = 1.22f
+                                scaleY = 1.22f
+                                alpha = 0.95f
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        FloatingItemContent(item, appsByKey)
                     }
                 }
             }
-            PageDots(count = 1, active = 0, darkText = false, modifier = Modifier.padding(bottom = 12.dp))
+            PageDots(
+                count = pagerState.pageCount,
+                active = pagerState.currentPage,
+                darkText = false,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 12.dp),
+            )
             Box(
                 Modifier
                     .onGloballyPositioned { dockCoords = it }
@@ -279,29 +371,6 @@ fun HomeScreen(
                     onOpenDrawer = onOpenDrawer,
                     onLaunch = onLaunch,
                 )
-            }
-        }
-
-        // 跟随手指的浮动图标
-        draggingItem?.let { item ->
-            val iconHalf = with(density) { 28.dp.toPx() }
-            Box(
-                Modifier
-                    .offset {
-                        IntOffset(
-                            (dragPos.x - iconHalf).roundToInt(),
-                            (dragPos.y - iconHalf).roundToInt(),
-                        )
-                    }
-                    .size(56.dp)
-                    .graphicsLayer {
-                        scaleX = 1.22f
-                        scaleY = 1.22f
-                        alpha = 0.95f
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                FloatingItemContent(item, appsByKey)
             }
         }
 
@@ -333,10 +402,12 @@ fun HomeScreen(
                 folder = folder,
                 appsByKey = appsByKey,
                 onDismiss = { newName ->
-                    val updated = items.map {
-                        if (it is HomeFolder && it.id == folder.id) it.copy(name = newName) else it
+                    val newPages = pages.map { list ->
+                        list.map {
+                            if (it is HomeFolder && it.id == folder.id) it.copy(name = newName) else it
+                        }
                     }
-                    onLayoutChange(updated, dockKeys)
+                    onLayoutChange(newPages, dockKeys)
                     openFolderId = null
                 },
                 onLaunch = { app ->
@@ -344,19 +415,99 @@ fun HomeScreen(
                     openFolderId = null
                 },
                 onDisband = {
-                    val newItems = buildList {
-                        for (it in items) {
-                            if (it is HomeFolder && it.id == folder.id) {
-                                addAll(it.members.map { key -> HomeApp(key) })
-                            } else {
-                                add(it)
-                            }
+                    val newPages = pages.map { it.toMutableList() }.toMutableList()
+                    val pageIdx = newPages.indexOfFirst { list -> list.any { it is HomeFolder && it.id == folder.id } }
+                    if (pageIdx >= 0) {
+                        val list = newPages[pageIdx]
+                        val idx = list.indexOfFirst { it is HomeFolder && it.id == folder.id }
+                        val f = list.removeAt(idx) as HomeFolder
+                        f.members.forEachIndexed { k, key ->
+                            list.add(idx + k, HomeApp(key))
                         }
                     }
-                    onLayoutChange(newItems, dockKeys)
+                    onLayoutChange(trim(newPages), dockKeys)
                     openFolderId = null
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun PageGrid(
+    items: List<HomeItem?>,
+    spec: GridSpec,
+    page: Int,
+    highlightIndex: Int,
+    appsByKey: Map<String, AppInfo>,
+    showLabels: Boolean,
+    dimId: String?,
+    onLaunch: (AppInfo) -> Unit,
+    onOpenFolder: (HomeFolder) -> Unit,
+    onCellPosition: (String, LayoutCoordinates) -> Unit,
+    onStartDrag: (HomeItem, Offset) -> Unit,
+    onDragMove: (Offset) -> Unit,
+    onDragEnd: () -> Unit,
+) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            for (row in 0 until spec.rows) {
+                Row(Modifier.weight(1f).fillMaxWidth()) {
+                    for (col in 0 until spec.cols) {
+                        val index = row * spec.cols + col
+                        val item = items.getOrNull(index)
+                        Box(Modifier.weight(1f).fillMaxHeight()) {
+                            if (index == highlightIndex) {
+                                Box(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(7.dp)
+                                        .background(
+                                            Color.White.copy(alpha = 0.18f),
+                                            RoundedCornerShape(20.dp),
+                                        ),
+                                )
+                            }
+                            if (item != null) {
+                                key(item.id) {
+                                    Box(
+                                        Modifier
+                                            .fillMaxSize()
+                                            .onGloballyPositioned { onCellPosition(item.id, it) }
+                                            .pointerInput(item.id) {
+                                                detectDragGesturesAfterLongPress(
+                                                    onDragStart = { offset ->
+                                                        onStartDrag(item, offset)
+                                                    },
+                                                    onDrag = { change, amount ->
+                                                        change.consume()
+                                                        onDragMove(amount)
+                                                    },
+                                                    onDragEnd = onDragEnd,
+                                                    onDragCancel = onDragEnd,
+                                                )
+                                            },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        HomeItemContent(
+                                            item = item,
+                                            appsByKey = appsByKey,
+                                            showLabels = showLabels,
+                                            onLaunch = onLaunch,
+                                            onOpenFolder = onOpenFolder,
+                                            dim = dimId == item.id,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -393,7 +544,7 @@ private fun FloatingItemContent(item: HomeItem, appsByKey: Map<String, AppInfo>)
         is HomeFolder -> Box(
             Modifier
                 .size(52.dp)
-                .clip(CircleShape)
+                .clip(RoundedCornerShape(14.dp))
                 .background(Color.White.copy(alpha = 0.45f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -428,7 +579,7 @@ fun FolderIcon(
         Box(
             Modifier
                 .size(52.dp)
-                .clip(CircleShape)
+                .clip(RoundedCornerShape(14.dp))
                 .background(Color.White.copy(alpha = 0.38f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -467,9 +618,7 @@ private fun FolderDialog(
 ) {
     var name by remember(folder.id) { mutableStateOf(folder.name) }
     val members = folder.members.mapNotNull { appsByKey[it] }
-    Dialog(
-        onDismissRequest = { onDismiss(name.ifBlank { folder.name }) },
-    ) {
+    Dialog(onDismissRequest = { onDismiss(name.ifBlank { folder.name }) }) {
         Surface(
             shape = RoundedCornerShape(32.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
@@ -494,7 +643,7 @@ private fun FolderDialog(
                                 Box(Modifier.weight(1f)) {
                                     AppIconCell(
                                         app = app,
-                                        onLaunch = { onLaunch(app); },
+                                        onLaunch = { onLaunch(app) },
                                         darkText = true,
                                     )
                                 }

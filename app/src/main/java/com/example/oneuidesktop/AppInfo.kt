@@ -4,7 +4,10 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import androidx.compose.ui.graphics.ImageBitmap
@@ -47,15 +50,21 @@ object AppRepository {
     }
 }
 
+/** One UI 图标圆角比例（约 27% 对角圆角，视觉近似三星 squircle） */
+private const val ICON_CORNER_RATIO = 0.27f
+
 /**
- * 把应用图标转成位图；自适应图标按 One UI 风格裁成圆形（108 画布中心 72 为可见区）。
+ * 统一处理为 One UI 风格图标：
+ * - 自适应图标：背景层+前景层裁进圆角方形（One UI 形状，替代旧的圆形裁剪）
+ * - 普通位图图标：提取主色生成柔和底板，内容按比例居中缩放（Samsung 对无底板图标的处理）
  */
 fun drawableToBitmap(drawable: Drawable, sizePx: Int = 96): Bitmap {
     if (drawable is AdaptiveIconDrawable) {
         val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val clip = Path().apply {
-            addCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f, Path.Direction.CW)
+            val r = sizePx * ICON_CORNER_RATIO
+            addRoundRect(RectF(0f, 0f, sizePx.toFloat(), sizePx.toFloat()), r, r, Path.Direction.CW)
         }
         canvas.clipPath(clip)
         val scale = sizePx / 72f
@@ -65,11 +74,60 @@ fun drawableToBitmap(drawable: Drawable, sizePx: Int = 96): Bitmap {
         drawable.draw(canvas)
         return bitmap
     }
-    val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else sizePx
-    val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else sizePx
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+
+    // 普通图标：先画到小位图提取主色
+    val probe = Bitmap.createBitmap(24, 24, Bitmap.Config.ARGB_8888)
+    val probeCanvas = Canvas(probe)
+    drawable.setBounds(0, 0, 24, 24)
+    drawable.draw(probeCanvas)
+    val bg = dominantPanelColor(probe)
+
+    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
-    drawable.setBounds(0, 0, width, height)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bg }
+    val r = sizePx * ICON_CORNER_RATIO
+    canvas.drawRoundRect(0f, 0f, sizePx.toFloat(), sizePx.toFloat(), r, r, paint)
+
+    // 内容缩放到约 62% 居中，保持宽高比
+    val dw = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else sizePx
+    val dh = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else sizePx
+    val content = sizePx * 0.62f
+    val scale = minOf(content / dw, content / dh)
+    val w = dw * scale
+    val h = dh * scale
+    val left = (sizePx - w) / 2f
+    val top = (sizePx - h) / 2f
+    drawable.setBounds(left.toInt(), top.toInt(), (left + w).toInt(), (top + h).toInt())
     drawable.draw(canvas)
     return bitmap
+}
+
+/** 取平均色并柔和化（低饱和高明度），灰白图标落到 One UI 浅灰底 */
+private fun dominantPanelColor(probe: Bitmap): Int {
+    var r = 0L
+    var g = 0L
+    var b = 0L
+    var n = 0L
+    for (x in 0 until probe.width) {
+        for (y in 0 until probe.height) {
+            val c = probe.getPixel(x, y)
+            if (Color.alpha(c) < 40) continue
+            r += Color.red(c)
+            g += Color.green(c)
+            b += Color.blue(c)
+            n++
+        }
+    }
+    if (n == 0L) return Color.parseColor("#F1F3F5")
+    val avg = Color.rgb((r / n).toInt().coerceIn(0, 255), (g / n).toInt().coerceIn(0, 255), (b / n).toInt().coerceIn(0, 255))
+    val hsv = FloatArray(3)
+    Color.colorToHSV(avg, hsv)
+    return if (hsv[1] < 0.12f) {
+        // 本身接近灰白：直接用 One UI 浅灰底
+        Color.parseColor("#F1F3F5")
+    } else {
+        hsv[1] = (hsv[1] * 0.38f).coerceIn(0f, 0.45f)
+        hsv[2] = 0.90f
+        Color.HSVToColor(hsv)
+    }
 }

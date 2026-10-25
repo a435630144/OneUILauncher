@@ -15,7 +15,7 @@ data class GridSpec(val cols: Int, val rows: Int) {
 fun gridSpec(isLandscape: Boolean): GridSpec =
     if (isLandscape) GridSpec(6, 4) else GridSpec(4, 5)
 
-/** 主屏条目：单个应用或文件夹 */
+/** 主屏条目：单个应用或文件夹；页内槽位可空（null = 空格） */
 sealed interface HomeItem {
     val id: String
 }
@@ -28,7 +28,7 @@ data class HomeFolder(
     val members: List<String>,
 ) : HomeItem
 
-data class HomeLayout(val pages: List<List<HomeItem>>, val dock: List<String>)
+data class HomeLayout(val pages: List<List<HomeItem?>>, val dock: List<String>)
 
 fun defaultHomeLayout(appKeys: List<String>): HomeLayout {
     val dock = appKeys.take(4)
@@ -37,7 +37,8 @@ fun defaultHomeLayout(appKeys: List<String>): HomeLayout {
 }
 
 fun HomeLayout.toJson(): String {
-    fun itemJson(item: HomeItem): JSONObject = when (item) {
+    fun itemJson(item: HomeItem?): Any = when (item) {
+        null -> JSONObject.NULL
         is HomeApp -> JSONObject().put("t", "a").put("id", item.id)
         is HomeFolder -> JSONObject().put("t", "f").put("id", item.id)
             .put("name", item.name).put("m", JSONArray(item.members))
@@ -53,25 +54,29 @@ fun HomeLayout.toJson(): String {
 
 fun parseHomeLayout(raw: String): HomeLayout? = try {
     val root = JSONObject(raw)
-    val pages = mutableListOf<List<HomeItem>>()
+    val pages = mutableListOf<List<HomeItem?>>()
     val pagesArr = root.getJSONArray("pages")
     for (i in 0 until pagesArr.length()) {
         val arr = pagesArr.getJSONArray(i)
-        val page = mutableListOf<HomeItem>()
+        val page = mutableListOf<HomeItem?>()
         for (j in 0 until arr.length()) {
-            val obj = arr.getJSONObject(j)
-            val item: HomeItem? = when (obj.getString("t")) {
-                "a" -> HomeApp(obj.getString("id"))
-                "f" -> HomeFolder(
-                    id = obj.getString("id"),
-                    name = obj.optString("name", "文件夹"),
-                    members = obj.optJSONArray("m")?.let { m ->
-                        List(m.length()) { k -> m.getString(k) }
-                    } ?: emptyList(),
-                )
-                else -> null
+            if (arr.isNull(j)) {
+                page.add(null)
+            } else {
+                val obj = arr.getJSONObject(j)
+                val item: HomeItem? = when (obj.getString("t")) {
+                    "a" -> HomeApp(obj.getString("id"))
+                    "f" -> HomeFolder(
+                        id = obj.getString("id"),
+                        name = obj.optString("name", "文件夹"),
+                        members = obj.optJSONArray("m")?.let { m ->
+                            List(m.length()) { k -> m.getString(k) }
+                        } ?: emptyList(),
+                    )
+                    else -> null
+                }
+                page.add(item)
             }
-            if (item != null) page += item
         }
         pages += page
     }

@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -80,6 +81,7 @@ fun AppDrawer(
     onCommit: (List<AppInfo>) -> Unit,
     onLaunch: (AppInfo) -> Unit,
     onOpenSettings: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
     var list by remember { mutableStateOf(apps) }
     LaunchedEffect(apps) { list = apps }
@@ -96,6 +98,7 @@ fun AppDrawer(
     val haptics = LocalHapticFeedback.current
     val density = LocalDensity.current
     var lastFlipAt by remember { mutableStateOf(0L) }
+    var dismissDragTotal by remember { mutableStateOf(0f) }
 
     val isLandscape = LocalConfiguration.current.orientation ==
         Configuration.ORIENTATION_LANDSCAPE
@@ -200,7 +203,18 @@ fun AppDrawer(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.97f))
-            .statusBarsPadding(),
+            .statusBarsPadding()
+            .pointerInput(Unit) {
+                // 抽屉内下滑关闭（One UI 手势）
+                detectVerticalDragGestures(
+                    onDragStart = { dismissDragTotal = 0f },
+                    onDragEnd = { if (dismissDragTotal > 180f) onDismiss() },
+                    onVerticalDrag = { change, amount ->
+                        change.consume()
+                        dismissDragTotal += amount
+                    },
+                )
+            },
     ) {
         Row(
             Modifier
