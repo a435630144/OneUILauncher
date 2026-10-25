@@ -51,3 +51,30 @@ app/src/main/java/com/example/oneuidesktop/
 - One UI 手势：抽屉内下滑关闭、主屏双指缩放
 - 通知角标（需要 NotificationListener 权限）、小部件支持
 - One UI Sans 字体（官方字体为三星版权资产，不可直接打包）
+
+## 开源协议
+
+本项目基于 **GPL-3.0** 协议开源，详见 [LICENSE](LICENSE)。
+
+```
+OneUI 桌面 (OneUi_Desktop) — 一款复刻三星 One UI 风格的第三方安卓桌面
+Copyright (C) 2026 a435630144
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+```
+
+注意：GPL-3.0 为强著佐权（copyleft）协议——任何基于本项目的二次开发作品
+分发时必须同样以 GPL-3.0 开源并提供完整源码。项目依赖（Kotlin/AndroidX/
+Compose，均为 Apache-2.0）与 GPL-3.0 兼容。三星 One UI 官方图标、字体等
+版权资产未包含在本仓库中。
