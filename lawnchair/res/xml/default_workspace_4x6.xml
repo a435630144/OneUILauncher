@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026, OneUI Desktop
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  -->
+<!--
+  One UI style first run layout for the 4x6 phone grid.
+
+  Row 0 stays empty: that band holds the One UI clock/date block which is
+  drawn by the launcher layout itself (see lawnchair/res/layout/launcher.xml).
+
+  Every entry is a <resolve> with an intent fallback so a device without a
+  given app simply skips that cell instead of failing the whole layout.
+-->
+<favorites xmlns:launcher="http://schemas.android.com/apk/res-auto/com.android.launcher3">
+
+    <!-- Dock: dialer, messages, camera, gallery, contacts -->
+    <resolve launcher:container="-101" launcher:screen="0" launcher:x="0" launcher:y="0">
+        <favorite launcher:uri="#Intent;action=android.intent.action.DIAL;end" />
+        <favorite launcher:uri="#Intent;action=android.intent.action.CALL_BUTTON;end" />
+    </resolve>
+
+    <resolve launcher:container="-101" launcher:screen="1" launcher:x="1" launcher:y="0">
+        <favorite launcher:uri="#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_MESSAGING;end" />
+        <favorite launcher:uri="sms:" />
+    </resolve>
+
+    <resolve launcher:container="-101" launcher:screen="2" launcher:x="2" launcher:y="0">
+        <favorite launcher:uri="#Intent;action=android.media.action.STILL_IMAGE_CAMERA;end" />
+        <favorite launcher:uri="#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.android.camera2;end" />
+    </resolve>
+
+    <resolve launcher:container="-101" launcher:screen="3" launcher:x="3" launcher:y="0">
+        <favorite launcher:uri="#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_GALLERY;end" />
+        <favorite launcher:uri="#Intent;type=images/*;end" />
+    </resolve>
+
+    <resolve launcher:container="-101" launcher:screen="4" launcher:x="4" launcher:y="0">
+        <favorite launcher:uri="#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_CONTACTS;end" />
+    </resolve>
+
+    <!-- First icon row, directly under the clock block -->
+    <resolve launcher:screen="0" launcher:x="0" launcher:y="1">
+        <favorite launcher:uri="#Intent;action=android.settings.SETTINGS;end" />
+        <favorite launcher:className="com.android.settings.Settings" launcher:packageName="com.android.settings" />
+    </resolve>
+
+    <resolve launcher:screen="0" launcher:x="1" launcher:y="1">
+        <favorite launcher:uri="#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.android.deskclock;end" />
+        <favorite launcher:uri="#Intent;action=android.intent.action.SHOW_ALARMS;end" />
+    </resolve>
+
+    <resolve launcher:screen="0" launcher:x="2" launcher:y="1">
+        <favorite launcher:uri="#Intent;action=android.intent.action.MAIN;category=android.intent.category.APP_CALENDAR;end" />
+    </resolve>
+
+    <resolve launcher:screen="0" launcher:x="3" launcher:y="1">
+        <favorite launcher:packageName="com.android.documentsui" launcher:className="com.android.documentsui.LauncherActivity" />
+        <favorite launcher:uri="#Intent;action=android.intent.action.VIEW;type=resource/folder;end" />
+    </resolve>
+
+</favorites>

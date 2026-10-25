@@ -1,0 +1,24 @@
+OneUI 桌面
+Copyright (C) 2026 a435630144
+
+This product includes software developed by:
+
+  * The Android Open Source Project (Launcher3)
+    https://source.android.com/
+    Licensed under the Apache License, Version 2.0.
+
+  * Lawnchair
+    https://github.com/LawnchairLauncher/lawnchair
+    Copyright (c) 2024, Lawnchair
+    Licensed under the Apache License, Version 2.0.
+
+The Apache-2.0 licensed components are distributed under the terms of the
+Apache License, Version 2.0 (see LICENSE.txt). Their copyright notices and
+license headers are retained in the corresponding source files.
+
+The combined work is distributed under the GNU General Public License v3.0
+(see LICENSE). Apache-2.0 is compatible with GPL-3.0, so the combination may
+be distributed under GPL-3.0 while the Apache-2.0 notices remain in place.
+
+The `legacy/` directory contains the previous Jetpack Compose implementation
+of this project and is also distributed under GPL-3.0.
