@@ -2,7 +2,7 @@
 
 > 更新时间：2026-10-27
 > 工作目录：`E:\OneDrive\家里台式\桌面\temp\OneUi_Desktop`
-> 分支：`main`，当前 HEAD `09c197b`（以 `git log` 为准）
+> 分支：`main`，当前 HEAD `c57d1ba`（以 `git log` 为准）
 > 架构与设计取舍见 [ARCHITECTURE.md](./ARCHITECTURE.md)，SESL 取舍见 [SESL-DECISION.md](./SESL-DECISION.md)。
 
 ---
@@ -212,3 +212,16 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - 项目整体：**GPL-3.0**（`LICENSE`）
 - Launcher3 / Lawnchair 来源文件：**Apache-2.0**（`LICENSE.txt`、`NOTICE`），
   版权头保持原样；新增 One UI 文件在头部注明 `Modifications copyright 2026, OneUI Desktop`。
+
+---
+
+## 10. 最近提交
+
+| 提交 | 内容 |
+| --- | --- |
+| `c57d1ba` | 文档：修正交接文档的 HEAD 与截图命令 |
+| `09c197b` | 文档：校正模拟器版本与 APK 体积 |
+| `2faf724` | 文档：记录 AppWidget 绑定限制并校正覆盖层清单 |
+| `e227978` | 文档：补充抽屉搜索栏验证记录与交接说明 |
+| `39e0fc5` | 抽屉：One UI 底部搜索栏、三点菜单与键盘避让 |
+| `c58f304` | 构建：支持中文路径，补充上游同步脚本 |
