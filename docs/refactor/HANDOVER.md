@@ -2,7 +2,7 @@
 
 > 更新时间：2026-10-27
 > 工作目录：`E:\OneDrive\家里台式\桌面\temp\OneUi_Desktop`
-> 分支：`main`，当前 HEAD `39e0fc5`（抽屉底部搜索栏已提交）
+> 分支：`main`，当前 HEAD `09c197b`（以 `git log` 为准）
 > 架构与设计取舍见 [ARCHITECTURE.md](./ARCHITECTURE.md)，SESL 取舍见 [SESL-DECISION.md](./SESL-DECISION.md)。
 
 ---
@@ -70,7 +70,7 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 问题 | 影响 | 处理建议 |
 | --- | --- | --- |
 | GitHub 网络不稳定 | 无法 push / 拉取上游 | 网络恢复后 `git push origin main`；不要尝试 unshallow 旧 fork |
-| 模拟器偶尔退出 | 验证中断 | 用 `-no-window -no-snapshot -gpu off` 启动；截图用 `adb exec-out screencap -p > file.png`；必要时重启 AVD |
+| 模拟器偶尔退出 | 验证中断 | 用 `-no-window -no-snapshot -gpu off` 启动；截图用 `adb shell screencap` + `adb pull`（PowerShell 5.1 不要用 `>` 重定向二进制）；必要时重启 AVD |
 | 时钟仍是覆盖层 | 不随页面滚动、不能移除、不能换样式 | 迁移到 AppWidget（见 §6） |
 | 抽屉三点菜单只是入口 | 不是 One UI 的底部菜单 | 先复用 `Preferences` 路由，后续做 `OneUiDrawerMenuBottomSheet` |
 | 抽屉没有分组 / 排序 | 与 One UI 仍有差距 | 见 §6 的排序与分组里程碑 |
@@ -98,11 +98,12 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 adb shell pm clear com.oneui.desktop
 adb shell "run-as com.oneui.desktop ls databases"   # 应为 launcher_6_4_5.db
 
-# 打开抽屉并截图
+# 打开抽屉并截图（PowerShell 5.1 不要用 > 重定向 PNG）
 adb shell input keyevent KEYCODE_HOME
 adb shell input swipe 540 1800 540 400 250
 Start-Sleep -Seconds 2
-adb exec-out screencap -p > D:\AndroidDevelopment\shots\drawer.png
+adb shell screencap -p /sdcard/drawer.png
+adb pull /sdcard/drawer.png D:\AndroidDevelopment\shots\drawer.png
 ```
 
 模拟器：
