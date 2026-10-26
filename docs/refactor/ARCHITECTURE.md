@@ -2,7 +2,8 @@
 
 > 基线：`LawnchairLauncher/lawnchair` 分支 `15-dev`，提交 `505dbc4`，Apache-2.0。
 > 工作分支：`main`，仓库根目录 `E:\OneDrive\家里台式\桌面\temp\OneUi_Desktop`。
-> 本文档记录第一阶段的骨架状态；设计取舍见 [SESL-DECISION.md](./SESL-DECISION.md)。
+> 本文档记录骨架阶段与抽屉搜索栏阶段的实现状态；交接事项见 [HANDOVER.md](./HANDOVER.md)，
+> 设计取舍见 [SESL-DECISION.md](./SESL-DECISION.md)。
 
 ## 1. 为什么是 Lawnchair 而不是裸 AOSP Launcher3
 
@@ -197,11 +198,11 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 > 验证是否生效：`adb shell "run-as com.oneui.desktop ls databases"`，
 > 应出现 `launcher_6_4_5.db`。
 
-## 7. 验证记录（模拟器 `medium_phone`，Android 16）
+## 7. 验证记录（模拟器 `medium_phone`，Android 15 / API 35）
 
 | 项目 | 结果 |
 | --- | --- |
-| 构建 | `:assembleLawnWithQuickstepGithubDebug` 成功，APK ≈ 48 MB |
+| 构建 | `:assembleLawnWithQuickstepGithubDebug` 成功，APK ≈ 46 MB |
 | 网格 | 4 列 × 6 行，Dock 5 位，DB 为 `launcher_6_4_5.db` |
 | 首屏 | 时钟 `15:24` + 日期 `10月25日 星期日`；第 1 行 4 图标；Dock 5 图标 |
 | 旧 UI 残留 | 无 AOSP 搜索条、无 smartspace「点击以设置」页 |
