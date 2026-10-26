@@ -2,7 +2,7 @@
 
 > 更新时间：2026-10-27
 > 工作目录：`E:\OneDrive\家里台式\桌面\temp\OneUi_Desktop`
-> 分支：`main`（当前基线提交 `c58f304`，抽屉搜索栏改动尚未提交时请以 `git log` 为准）
+> 分支：`main`，当前 HEAD `39e0fc5`（抽屉底部搜索栏已提交）
 > 架构与设计取舍见 [ARCHITECTURE.md](./ARCHITECTURE.md)，SESL 取舍见 [SESL-DECISION.md](./SESL-DECISION.md)。
 
 ---
@@ -10,15 +10,18 @@
 ## 1. 一句话状态
 
 底层 Launcher3 / Lawnchair 15 已经能构建、能装、能当默认桌面；首屏 4×6 + 5 Dock
-+ 时钟覆盖层完成；应用抽屉的**底部搜索胶囊**（One UI 8.0 样式）已实现并验证，
-包括三点菜单和键盘避让。下一步是时钟 AppWidget、抽屉分组、自定义排序、设置页
-卡片化和动画复刻。
++ 时钟覆盖层完成；应用抽屉的**底部搜索胶囊**（One UI 8.0 样式）已完成并在模拟器
+验证布局、三点菜单、键盘避让和输入态背景保持。下一步是时钟 AppWidget、抽屉分组、
+自定义排序、设置页卡片化和动画复刻。
 
 当前 APK：
 
 ```
-build\outputs\apk\lawnWithQuickstepGithub\debug\Lawnchair.15.Dev.(c58f304).github.debug.apk
+build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 ```
+
+> 文件名形如 `Lawnchair.15.Dev.(<短哈希>).github.debug.apk`；短哈希取构建时的 HEAD，
+> 重新构建后会与 `git log` 最新提交一致。
 
 ---
 
@@ -54,6 +57,8 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\Lawnchair.15.Dev.(c58f304).githu
    **没有放大镜**（与 One UI 8.0 一致）。
 6. **三点菜单**：目前跳到 `PreferenceActivity` 的 `AppDrawer` 路由；
    后续要替换成 One UI 风格底部菜单（排序 / 设置）。
+7. **输入态**：`ActivityAllAppsContainerView` 的 `bgVisible` 判断在停靠模式下
+   强制为 `true`，否则 `isSearching()` 会把胶囊背景设为透明。
 
 > 注意：`hideAppDrawerSearchBar` 打开时，列表不再预留底部空白，搜索栏本身由
 > `AllAppsSearchInput` 的 `isInvisible` / 高度 0 逻辑隐藏。
@@ -118,17 +123,13 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 ## 6. 下一步（按优先级）
 
-### 6.1 提交当前抽屉改动
+### 6.1 抽屉搜索栏（已完成，提交 `39e0fc5`）
 
-```powershell
-git add -A
-git commit -m "抽屉: One UI 底部搜索栏、三点菜单与键盘避让"
-```
-
-提交前确认：
+当前工作树应保持干净。后续如果继续改抽屉，提交前确认：
 - `git status` 没有 `build/`、`.gradle/`、`local.properties` 等产物；
 - `tools/oneui-overlay.txt` 已包含本轮所有文件；
-- 截图已更新到 `docs/refactor/shots/`。
+- 截图已更新到 `docs/refactor/shots/`；
+- `CHANGELOG.md` 与 `ARCHITECTURE.md` 的验证记录同步。
 
 ### 6.2 时钟 AppWidget
 
