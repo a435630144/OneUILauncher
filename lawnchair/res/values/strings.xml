@@ -78,6 +78,8 @@
     <!-- When mentioning settings UI -->
     <string name="smartspace_preferences">Preferences</string>
     <string name="settings_button_text">桌面设置</string>
+    <string name="oneui_search_hint">Search</string>
+    <string name="oneui_drawer_menu">App drawer settings</string>
     <string name="system_settings">System settings</string>
     <string name="title_change_settings">Change settings</string>
 

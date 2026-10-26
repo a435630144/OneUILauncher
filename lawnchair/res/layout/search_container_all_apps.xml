@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?><!--
   ~ Copyright 2021, Lawnchair
+  ~ Modifications copyright 2026, OneUI Desktop
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -14,12 +15,21 @@
   ~ limitations under the License.
   -->
 
+<!--
+  One UI app drawer search bar.
+
+  Unlike AOSP/Lawnchair this bar is docked to the bottom of the all apps
+  surface (layout_alignParentBottom), so the app grid scrolls underneath it.
+  AllAppsSearchInput#setInsets applies the navigation bar inset as a bottom
+  margin instead of shifting the view down from the status bar.
+-->
 <app.lawnchair.allapps.AllAppsSearchInput xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/search_container_all_apps"
     android:layout_width="match_parent"
     android:layout_height="@dimen/search_box_container_height"
+    android:layout_alignParentBottom="true"
     android:clickable="true"
     android:focusable="true">
     <FrameLayout
@@ -35,8 +45,8 @@
             android:id="@+id/hint"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
-            android:layout_marginStart="28dp"
-            android:layout_marginEnd="28dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="56dp"
             android:clickable="false"
             android:ellipsize="end"
             android:gravity="start|center"
@@ -44,18 +54,19 @@
             android:scrollHorizontally="true"
             android:singleLine="true"
             android:textColor="?android:textColorTertiary"
-            android:textSize="20sp" />
+            android:textSize="16sp" />
 
         <app.lawnchair.allapps.FallbackSearchInputView
             android:id="@+id/input"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginStart="28dp"
-            android:layout_marginEnd="28dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="56dp"
             android:background="@android:color/transparent"
             android:ellipsize="end"
             android:focusableInTouchMode="true"
             android:gravity="start|center"
+            android:hint="@string/oneui_search_hint"
             android:imeOptions="actionGo|flagNoExtractUi"
             android:inputType="textNoSuggestions"
             android:letterSpacing="-0.01"
@@ -64,22 +75,9 @@
             android:singleLine="true"
             android:textColor="?android:textColorPrimary"
             android:textColorHint="?android:textColorTertiary"
-            android:textSize="20sp" />
+            android:textSize="16sp" />
 
     </FrameLayout>
-
-    <ImageButton
-        android:id="@+id/search_icon"
-        android:layout_width="@dimen/search_box_height"
-        android:layout_height="@dimen/search_box_height"
-        android:layout_gravity="center|start"
-        android:background="@drawable/pill_ripple"
-        android:layout_marginEnd="6dp"
-        android:clickable="true"
-        android:contentDescription="@string/search_bar_label"
-        android:scaleType="center"
-        android:src="@drawable/ic_allapps_search"
-        app:tint="?android:textColorSecondary" />
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -123,6 +121,18 @@
             android:contentDescription="@string/search_input_action_clear_results"
             android:scaleType="center"
             android:src="@drawable/ic_remove_no_shadow"
+            app:tint="?android:textColorSecondary" />
+
+        <ImageButton
+            android:id="@+id/menu_btn"
+            android:layout_width="@dimen/search_box_height"
+            android:layout_height="@dimen/search_box_height"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/pill_ripple"
+            android:clickable="true"
+            android:contentDescription="@string/oneui_drawer_menu"
+            android:scaleType="center"
+            android:src="@drawable/oneui_ic_more_vert"
             app:tint="?android:textColorSecondary" />
     </LinearLayout>
 

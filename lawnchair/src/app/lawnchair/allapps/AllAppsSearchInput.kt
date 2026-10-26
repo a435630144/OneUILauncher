@@ -15,16 +15,18 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.View.OnFocusChangeListener
 import android.view.ViewTreeObserver
+import android.view.WindowInsets
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.core.widget.addTextChangedListener
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
-import androidx.lifecycle.lifecycleScope
 import app.lawnchair.launcher
 import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.preferences2.PreferenceManager2
@@ -32,7 +34,6 @@ import app.lawnchair.preferences2.subscribeBlocking
 import app.lawnchair.qsb.AssistantIconView
 import app.lawnchair.qsb.LawnQsbLayout.Companion.getLensIntent
 import app.lawnchair.qsb.LawnQsbLayout.Companion.getSearchProvider
-import app.lawnchair.qsb.ThemingMethod
 import app.lawnchair.qsb.providers.Google
 import app.lawnchair.qsb.providers.GoogleGo
 import app.lawnchair.qsb.providers.PixelSearch
@@ -40,6 +41,8 @@ import app.lawnchair.qsb.setThemedIconResource
 import app.lawnchair.search.LawnchairRecentSuggestionProvider
 import app.lawnchair.search.algorithms.LawnchairSearchAlgorithm
 import app.lawnchair.theme.drawable.DrawableTokens
+import app.lawnchair.ui.preferences.PreferenceActivity
+import app.lawnchair.ui.preferences.navigation.AppDrawer
 import app.lawnchair.util.viewAttachedScope
 import com.android.launcher3.Insettable
 import com.android.launcher3.InvariantDeviceProfile.OnIDPChangeListener
@@ -70,7 +73,7 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
     private lateinit var hint: TextView
     private lateinit var input: FallbackSearchInputView
     private lateinit var actionButton: ImageButton
-    private lateinit var searchIcon: ImageButton
+    private lateinit var menuButton: ImageButton
 
     private lateinit var micIcon: AssistantIconView
     private lateinit var lensIcon: ImageButton
@@ -105,6 +108,11 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
     private var initialPaddingLeft: Int = 0
     private var initialPaddingRight: Int = 0
 
+    // Bottom insets used to keep the docked One UI search bar above both the
+    // navigation bar and the software keyboard.
+    private var lastNavBottomInset: Int = 0
+    private var imeBottomInset: Int = 0
+
     override fun onFinishInflate() {
         super.onFinishInflate()
 
@@ -118,7 +126,6 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
 
         input = ViewCompat.requireViewById(this, R.id.input)
 
-        searchIcon = ViewCompat.requireViewById(this, R.id.search_icon)
         micIcon = ViewCompat.requireViewById(this, R.id.mic_btn)
         lensIcon = ViewCompat.requireViewById(this, R.id.lens_btn)
 
@@ -144,28 +151,15 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
             }
         }
 
+        // One UI puts the app drawer overflow menu on the trailing edge of the
+        // search field. For now it opens the app drawer preferences; a One UI
+        // style bottom sheet (sort / settings) can replace this later.
+        menuButton = ViewCompat.requireViewById(this, R.id.menu_btn)
+        menuButton.setOnClickListener {
+            context.startActivity(PreferenceActivity.createIntent(context, AppDrawer))
+        }
+
         prefs2.themedHotseatQsb.subscribeBlocking(scope = viewAttachedScope) { themed ->
-            with(searchIcon) {
-                isVisible = true
-
-                val iconRes = if (themed) searchProvider.themedIcon else searchProvider.icon
-                val resId = if (shouldShowIcons) iconRes else R.drawable.ic_qsb_search
-                val isThemed = themed || resId == R.drawable.ic_qsb_search
-                val method = if (shouldShowIcons) searchProvider.themingMethod else ThemingMethod.TINT
-
-                setThemedIconResource(
-                    resId = resId,
-                    themed = isThemed,
-                    method = method,
-                )
-
-                setOnClickListener {
-                    val launcher = context.launcher
-                    launcher.lifecycleScope.launch {
-                        searchProvider.launch(launcher)
-                    }
-                }
-            }
             with(micIcon) {
                 setIcon(isGoogle, themed)
                 setOnClickListener {
@@ -185,19 +179,21 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
         val currentPaddingRight = initialPaddingRight
         input.onFocusChangeListener = OnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
-                if (prefs2.searchAlgorithm.firstBlocking() != LawnchairSearchAlgorithm.APP_SEARCH) {
-                    input.setHint(R.string.all_apps_device_search_hint)
-                } else {
-                    input.setHint(R.string.all_apps_search_bar_hint)
-                }
+                input.setHint(R.string.oneui_search_hint)
 
                 if (input.text.toString().isEmpty()) {
                     searchAlgorithm?.doZeroStateSearch(this)
                 }
 
-                setBackgroundVisibility(false, 0f)
+                if (isDockedToBottom) {
+                    // One UI keeps the search pill visible while the field is
+                    // focused; only its contents change.
+                    setBackgroundVisibility(true, 1f)
+                } else {
+                    setBackgroundVisibility(false, 0f)
+                    animatePadding(currentPaddingLeft / 2, currentPaddingRight / 2)
+                }
                 animateHintVisibility(true)
-                animatePadding(currentPaddingLeft / 2, currentPaddingRight / 2)
 
                 // Sometimes the user has to click the input bar one more time
                 // for the keyboard to show.
@@ -210,9 +206,11 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
                     suggestionsRecent.saveRecentQuery(query, null)
                 }
 
-                animatePadding(currentPaddingLeft, currentPaddingRight)
+                if (!isDockedToBottom) {
+                    animatePadding(currentPaddingLeft, currentPaddingRight)
+                }
                 focusedResultTitle = ""
-                input.setHint("")
+                input.setHint(R.string.oneui_search_hint)
                 hint.text = ""
             }
         }
@@ -399,20 +397,59 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
         appsView.mSearchRecyclerView.onSearchResultsChanged()
     }
 
+    /**
+     * True when the search bar is docked to the bottom of the all apps surface
+     * (One UI style). In that case the navigation bar inset is applied as a
+     * bottom margin and the legacy "drop down from the status bar" offset is
+     * skipped.
+     */
+    private val isDockedToBottom: Boolean
+        get() = (layoutParams as? RelativeLayout.LayoutParams)
+            ?.rules?.get(RelativeLayout.ALIGN_PARENT_BOTTOM) == RelativeLayout.TRUE
+
     override fun setInsets(insets: Rect) {
-        (layoutParams as MarginLayoutParams).apply {
-            topMargin = if (isInvisible) {
-                insets.top - allAppsSearchVerticalOffset
-            } else {
-                max(-allAppsSearchVerticalOffset, insets.top - qsbMarginTopAdjusting)
+        if (isDockedToBottom) {
+            lastNavBottomInset = insets.bottom
+            applyDockedBottomMargin()
+        } else {
+            (layoutParams as MarginLayoutParams).apply {
+                topMargin = if (isInvisible) {
+                    insets.top - allAppsSearchVerticalOffset
+                } else {
+                    max(-allAppsSearchVerticalOffset, insets.top - qsbMarginTopAdjusting)
+                }
             }
+            requestLayout()
         }
+    }
+
+    override fun onApplyWindowInsets(insets: WindowInsets): WindowInsets {
+        if (isDockedToBottom) {
+            imeBottomInset = WindowInsetsCompat.toWindowInsetsCompat(insets)
+                .getInsets(WindowInsetsCompat.Type.ime()).bottom
+            applyDockedBottomMargin()
+        }
+        return super.onApplyWindowInsets(insets)
+    }
+
+    /**
+     * Docked mode: the view is aligned to the bottom of the all apps container,
+     * which itself extends behind the navigation bar and the keyboard. Lifting
+     * it by the larger of the two insets reproduces One UI's search bar sitting
+     * directly above the keyboard.
+     */
+    private fun applyDockedBottomMargin() {
+        val bottom = max(lastNavBottomInset, imeBottomInset) +
+            resources.getDimensionPixelSize(R.dimen.oneui_search_bar_bottom_margin)
+        (layoutParams as MarginLayoutParams).bottomMargin = bottom
         requestLayout()
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
         super.onLayout(changed, l, t, r, b)
-        offsetTopAndBottom(allAppsSearchVerticalOffset)
+        if (!isDockedToBottom) {
+            offsetTopAndBottom(allAppsSearchVerticalOffset)
+        }
     }
 
     override fun getEditText() = input

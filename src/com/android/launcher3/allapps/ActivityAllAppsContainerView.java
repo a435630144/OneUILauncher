@@ -682,6 +682,14 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             scrollerLayoutParams.bottomMargin = mSearchContainer.getHeight()
                     + getResources().getDimensionPixelSize(
                             R.dimen.fastscroll_bottom_margin_floating_search);
+        } else if (isSearchBarDockedBottom()
+                && !PreferenceExtensionsKt.firstBlocking(pref2.getHideAppDrawerSearchBar())) {
+            // Keep the scroller above the bottom-docked One UI search bar.
+            RelativeLayout.LayoutParams scrollerLayoutParams = (LayoutParams) mFastScroller.getLayoutParams();
+            scrollerLayoutParams.bottomMargin = getResources().getDimensionPixelSize(
+                    R.dimen.search_box_container_height)
+                    + getResources().getDimensionPixelSize(
+                            R.dimen.oneui_search_bar_bottom_margin);
         }
 
         mAllAppsStore.registerIconContainer(mAH.get(AdapterHolder.MAIN).mRecyclerView);
@@ -762,7 +770,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         removeCustomRules(getSearchRecyclerView());
         if (!isSearchSupported()) {
             layoutWithoutSearchContainer(rvContainer, showTabs);
-        } else if (isSearchBarFloating()) {
+        } else if (isSearchBarFloating() || isSearchBarDockedBottom()) {
             alignParentTop(rvContainer, showTabs);
             alignParentTop(getSearchRecyclerView(), /* tabs= */ false);
         } else {
@@ -796,7 +804,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         removeCustomRules(mHeader);
         if (!isSearchSupported()) {
             layoutWithoutSearchContainer(mHeader, false /* includeTabsMargin */);
-        } else if (isSearchBarFloating()) {
+        } else if (isSearchBarFloating() || isSearchBarDockedBottom()) {
             alignParentTop(mHeader, false /* includeTabsMargin */);
         } else {
             layoutBelowSearchContainer(mHeader, false /* includeTabsMargin */);
@@ -822,7 +830,10 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         }
 
         boolean bgVisible = mSearchUiManager.getBackgroundVisibility();
-        if (!isSearching()) {
+        if (!isSearching() || isSearchBarDockedBottom()) {
+            // A bottom-docked One UI search bar keeps its pill background while
+            // the user is typing; only the legacy top search bar goes
+            // transparent to reveal the results surface.
             bgVisible = true;
         } else {
             bgVisible = false;
@@ -856,6 +867,14 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
      */
     protected boolean isSearchBarFloating() {
         return mSearchUiDelegate.isSearchBarFloating();
+    }
+
+    /**
+     * One UI variant: the search bar is docked to the bottom edge of the all apps
+     * surface instead of being laid out above the header.
+     */
+    protected boolean isSearchBarDockedBottom() {
+        return false;
     }
 
     /**
@@ -1520,7 +1539,9 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         final FloatingHeaderView headerView = getFloatingHeaderView();
         if (hasBottomSheet) {
             // Start adding header protection if search bar or tabs will attach to the top.
-            if (!isSearchBarFloating() || mUsingTabs) {
+            // A bottom-docked One UI search bar leaves the header at the very top with an
+            // opaque backdrop, so no protection scrim is needed there either.
+            if ((!isSearchBarFloating() && !isSearchBarDockedBottom()) || mUsingTabs) {
                 mTmpRectF.set(
                         leftWithScale,
                         topWithScale,
@@ -1589,7 +1610,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     /** Returns the position of the bottom edge of the header */
     public int getHeaderBottom() {
         int bottom = (int) getTranslationY() + mHeader.getClipTop();
-        if (isSearchBarFloating()) {
+        if (isSearchBarFloating() || isSearchBarDockedBottom()) {
             if (mActivityContext.getDeviceProfile().isTablet) {
                 return bottom + mBottomSheetBackground.getTop();
             }
@@ -1682,6 +1703,15 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                 }
                 if (isSearchBarFloating()) {
                     bottomOffset += mSearchContainer.getHeight();
+                } else if (isSearchBarDockedBottom()
+                        && !PreferenceExtensionsKt.firstBlocking(
+                                pref2.getHideAppDrawerSearchBar())) {
+                    // Reserve room for the bottom-docked One UI search bar so the
+                    // last row of icons can scroll clear of it.
+                    bottomOffset += getResources().getDimensionPixelSize(
+                            R.dimen.search_box_container_height)
+                            + getResources().getDimensionPixelSize(
+                                    R.dimen.oneui_search_bar_bottom_margin);
                 }
                 mRecyclerView.setPadding(mPadding.left, mPadding.top, mPadding.right,
                         mPadding.bottom + bottomOffset);

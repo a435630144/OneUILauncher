@@ -29,7 +29,7 @@
     <dimen name="lawnchair_dialog_corner_radius">24dp</dimen>
 
     <!-- qsb -->
-    <dimen name="all_apps_search_bar_bottom_padding">36dp</dimen>
+    <dimen name="all_apps_search_bar_bottom_padding">8dp</dimen>
     <dimen name="all_apps_search_vertical_offset">30dp</dimen>
     <dimen name="qsb_g_icon_marginStart">16dp</dimen>
     <dimen name="qsb_icon_padding">10dp</dimen>
@@ -43,8 +43,9 @@
     <dimen name="qsb_widget_vertical_padding">6dp</dimen>
 
     <!-- search -->
-    <dimen name="search_box_container_height">60dp</dimen>
-    <dimen name="search_box_height">52dp</dimen>
+    <dimen name="search_box_container_height">72dp</dimen>
+    <dimen name="search_box_height">48dp</dimen>
+    <dimen name="oneui_search_bar_bottom_margin">8dp</dimen>
     <dimen name="search_decoration_padding">1dp</dimen>
     <dimen name="search_group_radius">28dp</dimen>
     <dimen name="search_hero_inline_button_text_size">12sp</dimen>
@@ -62,6 +63,7 @@
     <dimen name="search_result_subtitle_padding_start">4dp</dimen>
 
     <dimen name="all_apps_header_top_margin">64dp</dimen>
+
 
     <!-- smartspace -->
     <dimen name="smartspaceAmbientShadowBlur">1.5dp</dimen>

@@ -83,6 +83,7 @@ sesl    app.oneui.design.sesl（暂不启用）    —— 唯一允许 import SE
 | **关闭 Dock 上方搜索条** | `config_default_hotseat_mode = disabled` |
 | **首屏 One UI 时钟 / 日期** | `lawnchair/res/layout/launcher.xml`（`oneui_clock`） |
 | **首屏默认排布（4 图标 + 5 Dock）** | `lawnchair/res/xml/default_workspace_4x6.xml` |
+| **抽屉底部搜索栏 + 三点菜单** | `lawnchair/res/layout/search_container_all_apps.xml`、`AllAppsSearchInput.kt`、`ActivityAllAppsContainerView.java` |
 
 ## 5. 首屏形态（本阶段核心）
 
@@ -131,6 +132,39 @@ One UI 手机首页是 4 列 × 6 行，Dock 5 个位置。Lawnchair 里网格�
 - **Dock 上方搜索条**：`config_default_hotseat_mode = disabled` 会去掉
   `search_container_hotseat` 里的 QSB，但保留 Dock 图标本身。
 
+### 5.5 应用抽屉底部搜索栏
+
+One UI 的抽屉搜索框在**底部**，网格从顶部开始、可以滚到搜索框下面。Lawnchair/AOSP
+原本把搜索框作为 `ActivityAllAppsContainerView` 的第一个子 View 放在顶部，并由
+`all_apps_header` 的 `layout_below` / `layoutBelowSearchContainer()` 决定列表位置。
+这里用「底部停靠」模式改造，和 AOSP 的 `isSearchBarFloating()` 区分开：
+
+| 层 | 改动 |
+| --- | --- |
+| 容器 | `ActivityAllAppsContainerView` 新增 `isSearchBarDockedBottom()` 钩子（默认 `false`） |
+| Lawnchair | `SearchContainerView` 覆写为 `true` |
+| 布局 | `search_container_all_apps.xml` 根布局 `layout_alignParentBottom="true"`；`all_apps_content.xml` 去掉 header 的 `layout_below` |
+| Insets | `AllAppsSearchInput#setInsets` 在停靠模式下把导航栏 inset 当作 `bottomMargin`，并跳过原来的 `offsetTopAndBottom(allAppsSearchVerticalOffset)`；`onApplyWindowInsets` 另外读取 IME inset，键盘弹出时把搜索栏抬到键盘上方 |
+| 列表 | 停靠时 `AdapterHolder#applyPadding` 额外预留 `search_box_container_height + oneui_search_bar_bottom_margin`，最后一排图标可滚出搜索框；快速滚动条同样上移 |
+| 外观 | 48dp 高、24dp 圆角胶囊、16sp 提示文字「搜索」；无放大镜，右端是 48dp 三点菜单按钮（`oneui_ic_more_vert`） |
+| 交互 | 点搜索框获得焦点并弹出键盘；点三点菜单打开 `PreferenceActivity` 的应用抽屉设置页（后续可替换为 One UI 风格底部菜单） |
+
+关键点：
+
+- header 与列表改为 `alignParentTop()`（与 `isSearchBarFloating()` 同一条分支），
+  但**不**走 floating 的 LauncherState 定位逻辑——那条路径依赖 hotseat QSB，本项目
+  已关闭 `config_default_hotseat_mode`，直接复用会 NPE。
+- 停靠模式下不再绘制顶部 header protection 遮罩（`dispatchDraw` 的判断），
+  否则遮罩高度会少算状态栏那一段。
+- 搜索框隐藏开关（`hideAppDrawerSearchBar`）生效时，列表不再预留底部空白。
+- **键盘**：Launcher 的窗口是 `adjustPan`，系统不会自动把底部搜索栏推到键盘上方，
+  因此在 `onApplyWindowInsets` 里用 `max(navBottom, imeBottom) + 8dp` 重算
+  `bottomMargin`。`setInsets()` 也走同一段 `applyDockedBottomMargin()`，避免被
+  容器后续的 inset 分发覆盖。
+- 视觉基线取 One UI 8.0 的**全宽胶囊 + 三点菜单**（左对齐「搜索」）。One UI 8.5
+  改成更窄的居中浮层，后续如要跟进，只需改 `search_wrapper` 的宽度/外边距和
+  `search_input_fg` 的圆角，不必动停靠逻辑。
+
 ## 6. 构建与运行
 
 ```powershell
@@ -171,26 +205,31 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 | 网格 | 4 列 × 6 行，Dock 5 位，DB 为 `launcher_6_4_5.db` |
 | 首屏 | 时钟 `15:24` + 日期 `10月25日 星期日`；第 1 行 4 图标；Dock 5 图标 |
 | 旧 UI 残留 | 无 AOSP 搜索条、无 smartspace「点击以设置」页 |
-| 抽屉 | 4 列网格、单行标签、squircle 图标、顶部搜索胶囊 |
+| 抽屉 | 4 列网格、单行标签、squircle 图标；搜索胶囊停靠底部（48dp 高、24dp 圆角、左对齐「搜索」、右侧三点菜单） |
+| 抽屉键盘 | 点搜索框弹出键盘后，搜索栏保持在键盘上方，输入时胶囊背景不消失 |
+| 抽屉三点菜单 | 打开 `PreferenceActivity` 的「应用抽屉」设置页 |
 | 长按桌面 | 「背景 / 小部件 / 启动器设置」菜单正常，时钟层未阻塞手势 |
 | 最近任务 | Quickstep 正常，时钟不会出现在任务快照里 |
 
 截图：`docs/refactor/shots/home.png`（首屏）、`drawer.png`（抽屉）、
-`long-press.png`（长按菜单）、`recents.png`（最近任务）。
+`drawer-keyboard.png`（抽屉 + 键盘）、`long-press.png`（长按菜单）、
+`recents.png`（最近任务）。
 
 ## 8. 下一步里程碑
 
 1. ~~**首屏形态**：4×6 网格 + 5 Dock + 时钟/日期 + 默认排布~~ ✅ 已完成
-2. **时钟组件化**：把覆盖层改成真正的 AppWidget（`OneUiClockWidgetProvider` +
+2. ~~**抽屉底部搜索栏**：底部停靠胶囊 + 三点菜单 + 键盘避让~~ ✅ 已完成
+3. **抽屉分组**：按首字母分组吸顶、隐藏标签开关；One UI 8.5 的窄居中搜索胶囊
+   作为可选视觉分支（只改宽度/外边距/圆角，不动停靠逻辑）。
+4. **时钟组件化**：把覆盖层改成真正的 AppWidget（`OneUiClockWidgetProvider` +
    `<appwidget>` 默认布局），让它随页面滚动、可移除、可换样式（One UI 有 4 种时钟样式）。
-3. **抽屉形态**：搜索框移到底部 + 圆角胶囊、按首字母分组吸顶、隐藏标签开关。
-   当前入口：`lawnchair/src/app/lawnchair/allapps/views/SearchContainerView.kt`、
-   `lawnchair/res/layout/search_container_all_apps.xml`。
-4. **自定义排序**：Lawnchair 15 只有字母序（`LawnchairAlphabeticalAppsList`），
+5. **自定义排序**：Lawnchair 15 只有字母序（`LawnchairAlphabeticalAppsList`），
    需要新增排序模式（字母 / 手动 / 使用频率）和拖拽调序，
    数据结构对齐现有 Compose 版 `HomeItem` 的 JSON 持久化。
-5. **设置页收口**：只保留桌面相关项，其余隐藏；二级页改用 One UI 分组卡片。
-6. **裁剪 Quickstep**：15-dev 已无 `withoutQuickstep` flavor，需要自己接一个
+6. **设置页收口**：只保留桌面相关项，其余隐藏；二级页改用 One UI 分组卡片。
+7. **动画复刻**：抽屉开合（背景模糊 + 图标错落）、图标按压缩放、页面切换、
+   长按菜单弹出/收起，统一用 One UI 的 `FastOutSlowIn` / 弹簧参数。
+8. **裁剪 Quickstep**：15-dev 已无 `withoutQuickstep` flavor，需要自己接一个
    不带 recents 的构建变体，把 332 MB 的基线压下来。
 
 ## 9. 仓库与上游同步

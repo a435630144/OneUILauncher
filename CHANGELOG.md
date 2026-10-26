@@ -29,3 +29,22 @@
 
 - `:assembleLawnWithQuickstepGithubDebug` 构建通过，APK ≈ 48 MB。
 - 模拟器 `medium_phone`：首屏 4×6、Dock 5 位、时钟正常；抽屉 / 长按菜单 / 最近任务正常。
+
+## v0.8 — 抽屉底部搜索栏（2026-10-27）
+
+**应用抽屉**
+
+- 搜索栏从顶部移到抽屉底部，`layout_alignParentBottom` 停靠；网格可滚动到搜索栏下方。
+- 新增 `ActivityAllAppsContainerView.isSearchBarDockedBottom()` 钩子，
+  `SearchContainerView` 覆写为 `true`，与 AOSP 的 floating search bar 路径分离。
+- 搜索胶囊：48dp 高、24dp 圆角、16sp「搜索」提示；去掉放大镜，右端增加三点菜单。
+- 三点菜单打开 `PreferenceActivity` 的 `AppDrawer` 路由（后续替换为 One UI 底部菜单）。
+- 键盘弹出时通过 IME inset 重算 `bottomMargin`，搜索栏保持在键盘上方。
+- 列表底部预留搜索栏高度，快速滚动条同步上移；隐藏搜索栏开关下不预留空白。
+- 新增 `oneui_ic_more_vert`、`oneui_search_hint`、`oneui_drawer_menu` 资源。
+
+**文档**
+
+- 新增 `docs/refactor/HANDOVER.md`（开发 / 交接状态、已知问题、下一步）。
+- `ARCHITECTURE.md` 增补 §5.5 键盘与三点菜单说明，更新验证记录和里程碑。
+- README 增加交接文档入口。
