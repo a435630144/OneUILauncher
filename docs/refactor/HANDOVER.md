@@ -133,6 +133,16 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 ### 6.2 时钟 AppWidget
 
+> **先决条件**：`BIND_APPWIDGET` 是签名权限，侧载 APK 默认拿不到（`dumpsys package`
+> 里只在 requested permissions，不在 install permissions）。`DefaultLayoutParser`
+> 的 `<appwidget>` 调 `bindAppWidgetIdIfAllowed` 失败后会直接丢弃该 widget。
+> 因此做真 AppWidget 前必须先决定绑定路径：
+> - 方案 A：首次启动时用 `AppWidgetHost.startAppWidgetBinding()` 弹系统确认框，
+>   用户同意后再写入数据库；
+> - 方案 B：把时钟做成页面内自绘控件（随 Workspace 滚动、设置里可隐藏），
+>   等有系统签名或绑定流程后再升级为 AppWidget。
+> 当前代码仍是 `launcher.xml` 的覆盖层，属于方案 B 的过渡形态。
+
 目标：把 `launcher.xml` 里的 `@id/oneui_clock` 覆盖层替换为真正的 AppWidget，
 让它随 Workspace 页面滚动、可长按移除、可在「小部件」里换样式。
 

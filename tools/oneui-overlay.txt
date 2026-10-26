@@ -11,7 +11,6 @@ lawnchair/res/values/config.xml
 lawnchair/res/values/strings.xml
 lawnchair/res/values/dimens.xml
 lawnchair/res/values-zh-rCN/strings.xml
-lawnchair/res/values-zh-rTW/strings.xml
 lawnchair/res/xml/default_workspace_4x6.xml
 lawnchair/res/xml/default_workspace_5x5.xml
 lawnchair/res/xml/device_profiles.xml
