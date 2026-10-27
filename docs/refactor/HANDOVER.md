@@ -237,9 +237,10 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 | 提交 | 内容 |
 | --- | --- |
+| `a0bdc33` | 时钟：跟随 Workspace 首页滚动 |
+| `0e90314` | 文档：交接文档补充最近提交列表 |
 | `c57d1ba` | 文档：修正交接文档的 HEAD 与截图命令 |
 | `09c197b` | 文档：校正模拟器版本与 APK 体积 |
 | `2faf724` | 文档：记录 AppWidget 绑定限制并校正覆盖层清单 |
 | `e227978` | 文档：补充抽屉搜索栏验证记录与交接说明 |
 | `39e0fc5` | 抽屉：One UI 底部搜索栏、三点菜单与键盘避让 |
-| `c58f304` | 构建：支持中文路径，补充上游同步脚本 |
