@@ -338,7 +338,16 @@ public class FloatingHeaderView extends LinearLayout implements
             // Add back spacing that is otherwise covered by the tabs.
             clipTop += mTabsAdditionalPaddingTop;
         }
-        mRVClip.top = mTabsHidden || mFloatingRowsCollapsed ? clipTop : 0;
+        // One UI keeps the search bar docked at the bottom, so nothing overlays the
+        // top of the list. Clearing the clip keeps the first alphabetical section
+        // label (added by Lawnchair) visible instead of hiding it under the header
+        // padding.
+        int listClipTop = clipTop;
+        if (getParent() instanceof ActivityAllAppsContainerView
+                && ((ActivityAllAppsContainerView<?>) getParent()).isSearchBarDockedBottom()) {
+            listClipTop = 0;
+        }
+        mRVClip.top = mTabsHidden || mFloatingRowsCollapsed ? listClipTop : 0;
         mHeaderClip.top = clipTop;
         // clipping on a draw might cause additional redraw
         setClipBounds(mHeaderClip);

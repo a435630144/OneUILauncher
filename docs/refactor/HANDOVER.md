@@ -10,10 +10,11 @@
 ## 1. 一句话状态
 
 底层 Launcher3 / Lawnchair 15 已经能构建、能装、能当默认桌面；首屏 4×6 + 5 Dock
-+ **随页面滑动的时钟覆盖层**完成；应用抽屉的**底部搜索胶囊**（One UI 8.0 样式）和
-**三点菜单打开的 One UI 底部菜单**（排序 / 设置）已完成，并在模拟器验证布局、键盘避让、
-排序子页进出、遮罩关闭和输入态背景保持。下一步是抽屉分组、自定义排序、设置页卡片化
-和动画复刻；时钟 AppWidget 仍卡在 `BIND_APPWIDGET` 授权流程。
++ **随页面滑动的时钟覆盖层**完成；应用抽屉的**底部搜索胶囊**（One UI 8.0 样式）、
+**三点菜单打开的 One UI 底部菜单**（排序 / 设置）和**字母分组标题**已完成，并在模拟器
+验证布局、键盘避让、排序子页进出、遮罩关闭、输入态背景保持和分组标题不被裁剪。
+下一步是右侧字母索引、自定义排序、设置页卡片化和动画复刻；时钟 AppWidget 仍卡在
+`BIND_APPWIDGET` 授权流程。
 
 当前 APK：
 
@@ -39,6 +40,7 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 视觉 | squircle 图标、单行抽屉标签、12/16/20/26dp 圆角、One UI 字号 | `config.xml`、`Shape.kt`、`Type.kt` |
 | 抽屉 | 底部停靠搜索胶囊、24dp 圆角、右端三点菜单、键盘弹出时上移 | `search_container_all_apps.xml`、`AllAppsSearchInput.kt`、`ActivityAllAppsContainerView.java` |
 | 抽屉菜单 | 三点菜单打开 One UI 底部菜单：拖动条、排序 / 设置行、排序子页（字母序选中、自定义「即将支持」）、返回与遮罩关闭 | `ui/popup/OneUiDrawerMenu.kt`、`ComposeBottomSheet.kt` |
+| 抽屉分组 | 字母序按首字母插入分组标题（B/C/D/…）；整行渲染、分组处重置行计数，文件夹在最前，搜索 / 分类模式不受影响 | `OneUiAllAppsGridAdapter.kt`、`LawnchairAlphabeticalAppsList.kt`、`oneui_all_apps_section_header.xml`、`FloatingHeaderView.java` |
 | 文档 | 架构、验证记录、上游同步、交接说明 | `docs/refactor/` |
 
 ---
@@ -99,6 +101,35 @@ One UI 8 的抽屉溢出菜单，复用 `ComposeBottomSheet.show(launcher)`：
 5. **资源**：`oneui_drawer_menu` 改为「更多选项」，新增
    `oneui_drawer_sort*` 中英文案；覆盖层清单已加入 `OneUiDrawerMenu.kt`。
 
+### 3.3 抽屉字母分组
+
+`OneUiAllAppsGridAdapter.kt` + `LawnchairAlphabeticalAppsList.kt` 负责字母序抽屉的
+首字母标题，单独改 adapter 或分组逻辑都不够：
+
+1. **数据切组**：`LawnchairAlphabeticalAppsList#addAppsWithAlphabetSections` 遍历
+   已排序的 app 列表，`sectionName`（中文按拼音首字母）变化时先插入
+   `OneUiSectionItem`，再把这一组交给 `super.addAppsWithSections()`。
+   组内仍用 AOSP 实现，`mFastScrollerSections` 的位置才正确。
+2. **视图类型**：`OneUiSectionItem.VIEW_TYPE` 包含
+   `VIEW_TYPE_ALL_APPS_DIVIDER` 位，`AlphabeticalAppsList` 会在每组分界处重置
+   `numAppsInSection` / `rowIndex`；`GridSpanSizer` 对未知类型返回整行宽度。
+3. **渲染**：`OneUiAllAppsGridAdapter` 拦截该 viewType，inflate
+   `oneui_all_apps_section_header.xml`；其他 viewType 原样交给
+   `AllAppsGridAdapter`，所以图标、文件夹、工作资料、搜索结果不需要改。
+4. **顶部留白**：停靠搜索栏时容器没有悬浮 header 占位，`setInsets` 用
+   `max(allAppsPadding.top, insets.top) + 8dp` 给列表留出状态栏高度。
+5. **列表裁剪**：AOSP `FloatingHeaderView#applyVerticalMove` 会把列表顶部裁掉
+   `all_apps_header_top_padding`（36dp），用来给悬浮 header 让位。停靠模式下
+   这个裁剪会吃掉第一个字母，因此改为 `clipTop = 0`。
+6. **范围**：只在字母序（`drawerList = true`）生效；文件夹仍排在所有字母组之前；
+   搜索结果和分类模式不插入标题。中文 app 的 `sectionName` 由
+   `AlphabeticIndexCompat` 计算，实测「拨打电话 → B、车软星球市场 → C、
+   待办清单 → D、日历 → R、设置/时钟 → S」。
+
+> 真实的 One UI 7 字母序抽屉没有行内字母标题，只有右侧索引条和拖动时的字母气泡。
+> 当前实现是分组功能的第一步；后续把 AOSP 蓝色快速滚动条换成 One UI 细灰条 + 字母
+> 气泡，并决定行内标题默认保留还是做成开关。
+
 ---
 
 ## 4. 已知问题 / 风险
@@ -109,7 +140,8 @@ One UI 8 的抽屉溢出菜单，复用 `ComposeBottomSheet.show(launcher)`：
 | 模拟器偶尔退出 | 验证中断 | 用 `-no-window -no-snapshot -gpu off` 启动；截图用 `adb shell screencap` + `adb pull`（PowerShell 5.1 不要用 `>` 重定向二进制）；必要时重启 AVD |
 | 时钟不能当作页面子项 | 已随第一页滚动，但长按不能选中/移除，样式固定 | 迁移到 AppWidget（见 §6.2）；已实现方案 B 的滚动同步 |
 | 抽屉三点菜单 | ~~只是入口~~ 已改为 One UI 底部菜单（排序 / 设置） | 排序子页已就位；「自定义」待实现排序模式与拖拽持久化（见 §6.3） |
-| 抽屉没有分组 / 排序 | 与 One UI 仍有差距 | 见 §6 的排序与分组里程碑 |
+| 抽屉分组与 One UI 不一致 | 当前是行内字母标题；One UI 7 实际是右侧字母索引 + 拖动气泡，且没有行内标题 | 下一步重做快速滚动条并评估把行内标题改为可关闭项（见 §6.3） |
+| 快速滚动条仍是 AOSP 样式 | 右侧是蓝色长条，不像 One UI 的细灰条 | 在 `RecyclerViewFastScroller` / `FastScrollThumbDrawable` 上做 One UI 皮肤 |
 | 键盘弹出时列表底部被键盘遮住 | 搜索结果区域变小 | 后续在 IME 显示时减少列表底部 padding，或滚动到结果 |
 | 模拟器 3 按钮导航 | 视觉与手势导航不同 | 最终需在 gesture navigation 下再验一次 inset |
 | PowerShell 5.1 中文乱码 | 终端显示问题，不是文件问题 | 文件均为 UTF-8；用 `read` 工具或 VS Code 查看 |
@@ -199,13 +231,18 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 ### 6.3 抽屉分组 + 排序
 
-- 分组：`LawnchairAlphabeticalAppsList` 已有字母 section，可加 sticky header；
-  One UI 的「按字母分组」开关接到 `PreferenceManager2`。
-- 排序：参考 `legacy/app/src/main/java/com/example/oneuidesktop/` 的 `HomeItem` JSON；
-  在 `lawnchair/src/app/lawnchair/allapps/` 新增 `AppSortMode`（字母 / 手动 / 频率），
-  持久化到 SharedPreferences，拖拽调序复用 `AllAppsGridAdapter` 的 drag 回调。
-- 排序子页已在 `OneUiDrawerMenu.kt` 就位：实现 `AppSortMode` 后把「字母顺序」的
-  单选状态和「自定义」的置灰逻辑接到真实偏好，去掉「即将支持」副标题。
+- **分组（已完成）**：字母序下按首字母插入行内标题，实现与验证见 §3.3。
+  下一步是 One UI 右侧字母索引：
+  - `RecyclerViewFastScroller` 的轨道/滑块改成细灰条（约 3–4dp），扩大触摸热区；
+  - `FastScrollerPopup` 改成 One UI 的大号蓝色圆形气泡 + 白色字母，拖动时显示；
+  - 拖动结束后气泡淡出，滑条保持细灰条；
+  - 再决定行内标题默认保留还是做成「显示分组标题」开关（One UI 默认没有）。
+- **自定义排序**：参考 `legacy/app/src/main/java/com/example/oneuidesktop/` 的
+  `HomeItem` JSON；在 `lawnchair/src/app/lawnchair/allapps/` 新增 `AppSortMode`
+  （字母 / 手动 / 频率），持久化到 SharedPreferences，拖拽调序复用
+  `AllAppsGridAdapter` 的 drag 回调。排序子页已在 `OneUiDrawerMenu.kt` 就位：
+  实现 `AppSortMode` 后把「字母顺序」的单选状态和「自定义」的置灰逻辑接到真实
+  偏好，去掉「即将支持」副标题。
 - 底部菜单主入口已经完成，后续只补「搜索设置」等 One UI 8.5 菜单项。
 
 ### 6.4 设置页 One UI 化
@@ -232,6 +269,7 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - [ ] 三点菜单打开底部菜单；排序子页可进入/返回；设置行跳转设置页
 - [ ] 键盘弹出时点菜单先收键盘；点遮罩关闭后抽屉仍打开
 - [ ] 键盘弹出后搜索栏在键盘上方，三点菜单可点
+- [ ] 抽屉字母分组：首字母完整可见、顺序正确；文件夹 / 搜索结果 / 长按菜单正常
 - [ ] 搜索框隐藏开关：打开后列表不留底部空白
 - [ ] 长按桌面、拖拽图标、最近任务不受影响
 - [ ] `docs/refactor/shots/` 截图更新
@@ -265,6 +303,7 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 | 提交 | 内容 |
 | --- | --- |
+| 待补 | 抽屉：字母分组标题 |
 | `cec482e` | 抽屉：三点菜单改为 One UI 底部菜单 |
 | `586b3f6` | 文档：交接文档记录时钟提交 |
 | `a0bdc33` | 时钟：跟随 Workspace 首页滚动 |

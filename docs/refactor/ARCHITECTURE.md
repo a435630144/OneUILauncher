@@ -86,6 +86,7 @@ sesl    app.oneui.design.sesl（暂不启用）    —— 唯一允许 import SE
 | **首屏默认排布（4 图标 + 5 Dock）** | `lawnchair/res/xml/default_workspace_4x6.xml` |
 | **抽屉底部搜索栏 + 三点菜单** | `lawnchair/res/layout/search_container_all_apps.xml`、`AllAppsSearchInput.kt`、`ActivityAllAppsContainerView.java` |
 | **抽屉 One UI 底部菜单（排序 / 设置）** | `lawnchair/src/app/lawnchair/ui/popup/OneUiDrawerMenu.kt` |
+| **抽屉字母分组标题** | `lawnchair/src/app/lawnchair/allapps/OneUiAllAppsGridAdapter.kt`、`LawnchairAlphabeticalAppsList.kt`、`FloatingHeaderView.java` |
 
 ## 5. 首屏形态（本阶段核心）
 
@@ -196,6 +197,23 @@ One UI 的抽屉搜索框在**底部**，网格从顶部开始、可以滚到搜
 - **外观**：复用 `ComposeBottomSheet` 的 24dp 顶部圆角、遮罩和开合动画；
   内容加 `navigationBarsOrDisplayCutoutPadding()`，三按钮导航下不会压住按钮。
 
+### 5.7 抽屉字母分组
+
+字母序抽屉按 `AppInfo.sectionName` 插入首字母标题：
+
+| 层 | 改动 |
+| --- | --- |
+| 数据 | `LawnchairAlphabeticalAppsList#addAppsWithAlphabetSections` 按 sectionName 切组，每个新首字母前插入 `OneUiSectionItem`；组内仍调用 AOSP `addAppsWithSections`，快速滚动条的 section 位置保持正确 |
+| 视图类型 | `OneUiSectionItem.VIEW_TYPE = (1 shl 11) or VIEW_TYPE_ALL_APPS_DIVIDER`；带上 divider 位后 `AlphabeticalAppsList` 会在每个分组处重置行计数，`GridSpanSizer` 也按整行处理 |
+| Adapter | `OneUiAllAppsGridAdapter` 只拦截该 viewType，用 `oneui_all_apps_section_header.xml`（14sp medium、0.06 字距、次级文字色）渲染；图标、文件夹、工作资料卡片、搜索结果仍由 `AllAppsGridAdapter` 处理 |
+| 顶部留白 | 停靠搜索栏时 `ActivityAllAppsContainerView#setInsets` 使用 `max(allAppsPadding.top, insets.top) + oneui_drawer_top_margin(8dp)`，避免第一个字母被状态栏裁切 |
+| 列表裁剪 | `FloatingHeaderView#applyVerticalMove` 在停靠模式下把列表 `clipTop` 置 0；AOSP 原本把列表顶部裁掉 36dp 给悬浮 header 让位，会把第一个分组标题吃掉 |
+| 范围 | 只影响字母序（`drawerList = true`）；文件夹仍排在最前；搜索结果和分类模式不插入标题 |
+
+> One UI 7 的字母序抽屉实际没有行内字母标题，而是右侧字母索引条 + 拖动时的大号字母
+> 气泡。这里的行内标题是「按字母分组」的第一步，用来验证分组数据和行高；下一步把
+> AOSP 快速滚动条改成 One UI 的细灰条 + 蓝色字母气泡，并评估是否把行内标题改为可选。
+
 ## 6. 构建与运行
 
 ```powershell
@@ -241,20 +259,24 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 | 抽屉键盘 | 点搜索框弹出键盘后，搜索栏保持在键盘上方，输入时胶囊背景不消失 |
 | 抽屉三点菜单 | 打开 One UI 底部菜单；排序页可进入/返回，设置页正常跳转，点遮罩关闭后抽屉仍在 |
 | 抽屉菜单 + 键盘 | 键盘弹出时点三点菜单，键盘先收起，菜单出现在抽屉底部 |
+| 抽屉分组 | 字母序下按 B/C/D/O/R/S/T/W/X 分组；首字母不被状态栏或列表裁剪；文件夹、搜索结果、长按菜单、键盘避让不受影响 |
 | 长按桌面 | 「背景 / 小部件 / 启动器设置」菜单正常，时钟层未阻塞手势 |
 | 最近任务 | Quickstep 正常，时钟不会出现在任务快照里 |
 
 截图：`docs/refactor/shots/home.png`（首屏）、`drawer.png`（抽屉）、
-`drawer-keyboard.png`（抽屉 + 键盘）、`drawer-menu.png`（抽屉底部菜单）、
-`drawer-sort.png`（排序子页）、`long-press.png`（长按菜单）、`recents.png`（最近任务）。
+`drawer-sections.png`（抽屉字母分组）、`drawer-keyboard.png`（抽屉 + 键盘）、
+`drawer-menu.png`（抽屉底部菜单）、`drawer-sort.png`（排序子页）、
+`long-press.png`（长按菜单）、`recents.png`（最近任务）。
 
 ## 8. 下一步里程碑
 
 1. ~~**首屏形态**：4×6 网格 + 5 Dock + 时钟/日期 + 默认排布~~ ✅ 已完成
 2. ~~**抽屉底部搜索栏**：底部停靠胶囊 + 三点菜单 + 键盘避让~~ ✅ 已完成
 3. ~~**抽屉底部菜单**：排序 / 设置底部菜单、排序子页、返回与键盘处理~~ ✅ 已完成
-4. **抽屉分组**：按首字母分组吸顶、隐藏标签开关；One UI 8.5 的窄居中搜索胶囊
-   作为可选视觉分支（只改宽度/外边距/圆角，不动停靠逻辑）。
+4. **抽屉分组 / 索引**：行内字母标题已完成（`OneUiAllAppsGridAdapter`）；下一步实现
+   One UI 右侧字母索引 + 拖动字母气泡（当前 AOSP 快速滚动条仍是蓝色长条），
+   并评估把行内标题做成可关闭项。One UI 8.5 的窄居中搜索胶囊作为可选视觉分支
+   （只改宽度/外边距/圆角，不动停靠逻辑）。
 5. **时钟组件化**：把自绘覆盖层升级成真正的 AppWidget（`OneUiClockWidgetProvider` +
    `<appwidget>` 默认布局），让它可移除、可换样式（One UI 有 4 种时钟样式）。
    随页面滚动已由 `OneUiClockView` 完成；AppWidget 绑定仍受 `BIND_APPWIDGET`

@@ -116,9 +116,40 @@ class LawnchairAlphabeticalAppsList<T>(
                 }
                 position++
             }
-            val remainingApps = appList.filterNot { app -> filteredList.contains(app) && prefs.folderApps.get() }
-            position = super.addAppsWithSections(remainingApps, position)
+            val remainingApps = appList.filterNotNull().filterNot { app ->
+                filteredList.contains(app) && prefs.folderApps.get()
+            }
+            position = addAppsWithAlphabetSections(remainingApps, position)
         }
+
+        return position
+    }
+
+    /**
+     * Adds the remaining alphabetical apps with a One UI section label before
+     * each new initial. Each group still goes through the AOSP implementation
+     * so the fast-scroller section positions stay correct.
+     */
+    private fun addAppsWithAlphabetSections(appList: List<AppInfo>, startPosition: Int): Int {
+        if (appList.isEmpty()) return startPosition
+
+        var position = startPosition
+        var lastSection: String? = null
+        var groupStart = 0
+
+        appList.forEachIndexed { index, app ->
+            val section = app.sectionName.ifBlank { "#" }
+            if (section != lastSection) {
+                if (lastSection != null) {
+                    position = super.addAppsWithSections(appList.subList(groupStart, index), position)
+                }
+                mAdapterItems.add(OneUiSectionItem(section))
+                position++
+                lastSection = section
+                groupStart = index
+            }
+        }
+        position = super.addAppsWithSections(appList.subList(groupStart, appList.size), position)
 
         return position
     }

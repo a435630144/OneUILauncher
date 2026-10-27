@@ -1267,7 +1267,14 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
 
         if (!grid.isVerticalBarLayout() || FeatureFlags.enableResponsiveWorkspace()) {
             int topPadding = grid.allAppsPadding.top;
-            if (isSearchBarFloating() && !grid.isTablet) {
+            if (isSearchBarDockedBottom()) {
+                // With the search bar docked at the bottom there is no floating
+                // header occupying the status bar area. Start the grid below the
+                // status bar so section labels and the first icon row stay clear.
+                topPadding = Math.max(topPadding, insets.top)
+                        + getResources().getDimensionPixelSize(
+                                R.dimen.oneui_drawer_top_margin);
+            } else if (isSearchBarFloating() && !grid.isTablet) {
                 topPadding += getResources().getDimensionPixelSize(
                         R.dimen.all_apps_additional_top_padding_floating_search);
             }

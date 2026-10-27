@@ -87,3 +87,25 @@
 - `ARCHITECTURE.md` 新增 §5.6 抽屉底部菜单，更新 §5.5 交互、§7 验证与 §8 里程碑。
 - `HANDOVER.md` 增补 §3.2 菜单实现、已知问题与验收项，更新已完成表。
 - 新增截图 `docs/refactor/shots/drawer-menu.png`、`drawer-sort.png`。
+
+## v0.11 — 抽屉字母分组标题（2026-10-27）
+
+**应用抽屉**
+
+- 字母序抽屉按 `AppInfo.sectionName` 插入首字母标题（B / C / D / …），
+  中文应用按拼音首字母分组；文件夹仍排在最前。
+- 新增 `OneUiAllAppsGridAdapter` 与 `OneUiSectionItem`：自定义 viewType 带
+  `VIEW_TYPE_ALL_APPS_DIVIDER` 位，分组处重置行计数，标题整行渲染；
+  图标、文件夹、工作资料与搜索结果仍由 AOSP `AllAppsGridAdapter` 处理。
+- `LawnchairAlphabeticalAppsList` 新增 `addAppsWithAlphabetSections()`：
+  每个新首字母前插入标题，组内继续调用 AOSP `addAppsWithSections()`，
+  快速滚动条的 section 位置保持正确。
+- 停靠搜索栏时容器顶部补 `insets.top + 8dp`，并在停靠模式下清除
+  `FloatingHeaderView` 对列表顶部的 36dp 裁剪，首字母不再被状态栏或列表裁掉。
+- 字母分组、长按菜单、搜索结果、键盘避让均验证正常；搜索和分类模式不受影响。
+
+**文档**
+
+- `ARCHITECTURE.md` 新增 §5.7 分组实现与「One UI 实际用右侧索引」的差异说明。
+- `HANDOVER.md` 增补 §3.3、已知问题与下一步（右侧字母索引 / 自定义排序）。
+- 新增截图 `docs/refactor/shots/drawer-sections.png`。
