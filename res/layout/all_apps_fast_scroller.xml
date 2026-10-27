@@ -19,13 +19,13 @@
     <!-- Fast scroller popup -->
     <TextView
         android:id="@+id/fast_scroller_popup"
-        style="@style/FastScrollerPopup"
+        style="@style/OneUiFastScrollerPopup"
         android:layout_alignParentEnd="true"
         android:layout_alignTop="@+id/all_apps_header"
         android:layout_marginTop="@dimen/all_apps_header_bottom_padding"
-        android:layout_marginEnd="@dimen/fastscroll_popup_margin" />
+        android:layout_marginEnd="@dimen/oneui_fastscroll_popup_margin" />
 
-    <com.android.launcher3.views.RecyclerViewFastScroller
+    <app.lawnchair.views.OneUiFastScroller
         android:id="@+id/fast_scroller"
         android:layout_width="@dimen/fastscroll_width"
         android:layout_height="wrap_content"

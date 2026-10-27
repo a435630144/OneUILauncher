@@ -328,6 +328,21 @@
         <item name="android:importantForAccessibility">no</item>
     </style>
 
+    <!-- One UI all-apps index bubble: a solid blue circle with a white letter. -->
+    <style name="OneUiFastScrollerPopup" parent="@android:style/TextAppearance.DeviceDefault.DialogWindowTitle">
+        <item name="android:layout_width">@dimen/oneui_fastscroll_popup_size</item>
+        <item name="android:layout_height">@dimen/oneui_fastscroll_popup_size</item>
+        <item name="android:textSize">@dimen/oneui_fastscroll_popup_text_size</item>
+        <item name="android:gravity">center</item>
+        <item name="android:alpha">0</item>
+        <item name="android:elevation">4dp</item>
+        <item name="android:saveEnabled">false</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:importantForAccessibility">no</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
     <style name="BaseIconRoot" parent="@android:style/TextAppearance.DeviceDefault.DialogWindowTitle">
         <item name="customFontType">@id/font_base_icon</item>
     </style>

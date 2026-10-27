@@ -123,6 +123,11 @@ fun AppDrawerPreferences(
                 step = 0.05F,
                 showAsPercentage = true,
             )
+            SwitchPreference(
+                label = stringResource(id = R.string.oneui_drawer_section_headers),
+                description = stringResource(id = R.string.oneui_drawer_section_headers_description),
+                adapter = prefs.drawerSectionHeaders.getAdapter(),
+            )
         }
         PreferenceGroup(heading = stringResource(id = R.string.icons)) {
             SliderPreference(

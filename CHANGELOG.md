@@ -109,3 +109,25 @@
 - `ARCHITECTURE.md` 新增 §5.7 分组实现与「One UI 实际用右侧索引」的差异说明。
 - `HANDOVER.md` 增补 §3.3、已知问题与下一步（右侧字母索引 / 自定义排序）。
 - 新增截图 `docs/refactor/shots/drawer-sections.png`。
+
+## v0.12 — 抽屉右侧字母索引条（2026-10-28）
+
+**应用抽屉**
+
+- 新增 `OneUiFastScroller`（继承 `RecyclerViewFastScroller`），只替换绘制与气泡位置，
+  section 映射、触摸判定和滚动动画仍走 AOSP：
+  - 轨道：3dp 宽、`TextColorPrimary` 10% 透明度、圆角胶囊；
+  - 滑块：静止 3dp，拖动时 150ms 展开到 6dp，高度 52dp；
+  - 气泡：52dp 蓝色 `#3E8EFF` 圆形 + 白色 22sp medium 字母，拖动时从 0.7 缩放弹出；
+  - `positionBubble()` 让气泡中心对齐滑块，并夹在轨道范围内；保留手势排除区域。
+- `all_apps_fast_scroller.xml` 换成 `OneUiFastScroller` + `OneUiFastScrollerPopup`；
+  小部件选择器保持 AOSP 样式。
+- 新增「字母分组标题」开关（设置 → 应用抽屉 → 网格，默认开）。关闭后
+  `addAppsWithSections` 直接走 AOSP 实现，抽屉只剩右侧索引，与 One UI 原版一致。
+- 实测拖动 B→D→W 时列表正确跳转，气泡字母与 section 一致。
+
+**文档**
+
+- `ARCHITECTURE.md` 新增 §5.8 索引条实现，§7 增加索引条/开关验证项与新截图，§8 里程碑 4 标记完成。
+- `HANDOVER.md` 新增 §3.4（含 `input motionevent` 抓气泡的方法）、更新已知问题与验收清单。
+- 新增截图 `docs/refactor/shots/drawer-index.png`、`drawer-index-drag.png`。

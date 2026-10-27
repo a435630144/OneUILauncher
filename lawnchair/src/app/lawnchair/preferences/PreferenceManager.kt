@@ -123,6 +123,7 @@ class PreferenceManager private constructor(private val context: Context) :
     val drawerListOrder = StringPref("pref_drawerListOrder", "", reloadGrid)
     val drawerList = BoolPref("pref_drawerList", true, recreate)
     val folderApps = BoolPref("pref_hideFolderApps", true, reloadGrid)
+    val drawerSectionHeaders = BoolPref("pref_drawerSectionHeaders", true, recreate)
 
     val recentsActionScreenshot = BoolPref("pref_recentsActionScreenshot", !isOnePlusStock)
     val recentsActionShare = BoolPref("pref_recentsActionShare", isOnePlusStock)

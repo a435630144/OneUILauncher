@@ -85,6 +85,8 @@
     <string name="oneui_drawer_sort_custom">Custom order</string>
     <string name="oneui_drawer_sort_custom_summary">Coming soon</string>
     <string name="oneui_drawer_sort_back">Back</string>
+    <string name="oneui_drawer_section_headers">Alphabet section headers</string>
+    <string name="oneui_drawer_section_headers_description">Show a letter above each group of apps. Turn off for the plain One UI grid, which only uses the right-hand index.</string>
     <string name="system_settings">System settings</string>
     <string name="title_change_settings">Change settings</string>
 

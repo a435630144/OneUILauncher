@@ -127,8 +127,43 @@ One UI 8 的抽屉溢出菜单，复用 `ComposeBottomSheet.show(launcher)`：
    待办清单 → D、日历 → R、设置/时钟 → S」。
 
 > 真实的 One UI 7 字母序抽屉没有行内字母标题，只有右侧索引条和拖动时的字母气泡。
-> 当前实现是分组功能的第一步；后续把 AOSP 蓝色快速滚动条换成 One UI 细灰条 + 字母
-> 气泡，并决定行内标题默认保留还是做成开关。
+> 行内标题现在由「字母分组标题」开关控制（默认开），关掉后只保留右侧索引。
+
+### 3.4 抽屉右侧索引条
+
+AOSP 的 `RecyclerViewFastScroller` 画的是 6–8dp 主题色长条 + 泪滴气泡，One UI 则是
+「细灰轨道 + 拖动加粗滑块 + 蓝色圆形字母气泡」。实现方式是**子类替换绘制**，滚动与
+触摸逻辑完全不动：
+
+1. **新类**：`lawnchair/src/app/lawnchair/views/OneUiFastScroller.kt` 继承
+   `RecyclerViewFastScroller`，只覆盖 `onDraw` / `setPopupView` / `setThumbOffsetY` /
+   `handleTouchEvent`。
+2. **轨道**：3dp 宽、`TextColorPrimary` 10% 透明度，圆角胶囊，范围取
+   `mRv.scrollBarTop` + `mRv.scrollbarTrackHeight`（注意 `getScrollBarTop()` 返回
+   `all_apps_header_top_padding`，不是 `getPaddingTop()`）。
+3. **滑块**：静止 3dp、拖动 6dp，`ValueAnimator` 150ms 过渡；高度沿用
+   `fastscroll_thumb_height`（52dp）。
+4. **气泡**：`setPopupView` 里把背景换成 `GradientDrawable(OVAL)` + `#3E8EFF`，
+   52dp 圆、白色 22sp medium；拖动开始时从 0.7 缩放到 1.0（160ms）。
+   `positionBubble()` 用滑块中心对齐气泡中心，并夹在轨道范围内，不再用 AOSP 的
+   泪滴偏移公式。
+5. **布局**：`res/layout/all_apps_fast_scroller.xml` 的标签换成
+   `app.lawnchair.views.OneUiFastScroller`，气泡样式换成 `OneUiFastScrollerPopup`。
+   小部件选择器（`widgets_full_sheet.xml` / `widgets_two_pane_sheet.xml`）仍用 AOSP 版本。
+6. **手势排除**：`onDraw` 里把滑块 bounds 写进 `systemGestureExclusionRects`，
+   贴右边缘拖动不会触发返回手势。
+
+**验证拖动**：`input swipe` 走的是列表滚动分支，抓不到气泡。必须用
+`input motionevent DOWN/MOVE/.../UP`，且在滑块上按下（列表在顶部时约
+`(1060, 220)`），先来一次小于 touch slop 的小位移再大幅移动：
+
+```powershell
+adb shell input motionevent DOWN 1060 240
+adb shell input motionevent MOVE 1060 258   # 先越过 touch slop
+adb shell input motionevent MOVE 1060 900
+adb shell screencap -p /sdcard/drag.png
+adb shell input motionevent UP 1060 900
+```
 
 ---
 
@@ -140,8 +175,8 @@ One UI 8 的抽屉溢出菜单，复用 `ComposeBottomSheet.show(launcher)`：
 | 模拟器偶尔退出 | 验证中断 | 用 `-no-window -no-snapshot -gpu off` 启动；截图用 `adb shell screencap` + `adb pull`（PowerShell 5.1 不要用 `>` 重定向二进制）；必要时重启 AVD |
 | 时钟不能当作页面子项 | 已随第一页滚动，但长按不能选中/移除，样式固定 | 迁移到 AppWidget（见 §6.2）；已实现方案 B 的滚动同步 |
 | 抽屉三点菜单 | ~~只是入口~~ 已改为 One UI 底部菜单（排序 / 设置） | 排序子页已就位；「自定义」待实现排序模式与拖拽持久化（见 §6.3） |
-| 抽屉分组与 One UI 不一致 | 当前是行内字母标题；One UI 7 实际是右侧字母索引 + 拖动气泡，且没有行内标题 | 下一步重做快速滚动条并评估把行内标题改为可关闭项（见 §6.3） |
-| 快速滚动条仍是 AOSP 样式 | 右侧是蓝色长条，不像 One UI 的细灰条 | 在 `RecyclerViewFastScroller` / `FastScrollThumbDrawable` 上做 One UI 皮肤 |
+| 抽屉分组与 One UI 不一致 | 行内字母标题默认开启，与 One UI 7 原版不同 | 设置 → 应用抽屉 → 网格里有「字母分组标题」开关，关掉即只剩右侧索引 |
+| 索引条触摸区域 | 视觉上是 3dp 细条，实际可拖区域仍是整条 `fastscroll_width`，与 One UI 手感接近 | 如需更宽/更窄改 `res/values/dimens.xml` 的 `fastscroll_width`，别改绘制宽度 |
 | 键盘弹出时列表底部被键盘遮住 | 搜索结果区域变小 | 后续在 IME 显示时减少列表底部 padding，或滚动到结果 |
 | 模拟器 3 按钮导航 | 视觉与手势导航不同 | 最终需在 gesture navigation 下再验一次 inset |
 | PowerShell 5.1 中文乱码 | 终端显示问题，不是文件问题 | 文件均为 UTF-8；用 `read` 工具或 VS Code 查看 |
@@ -231,12 +266,9 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 ### 6.3 抽屉分组 + 排序
 
-- **分组（已完成）**：字母序下按首字母插入行内标题，实现与验证见 §3.3。
-  下一步是 One UI 右侧字母索引：
-  - `RecyclerViewFastScroller` 的轨道/滑块改成细灰条（约 3–4dp），扩大触摸热区；
-  - `FastScrollerPopup` 改成 One UI 的大号蓝色圆形气泡 + 白色字母，拖动时显示；
-  - 拖动结束后气泡淡出，滑条保持细灰条；
-  - 再决定行内标题默认保留还是做成「显示分组标题」开关（One UI 默认没有）。
+- **分组与索引（已完成）**：字母序下按首字母插入行内标题（§3.3），右侧细灰索引条
+  + 蓝色圆形字母气泡（§3.4）；行内标题由「字母分组标题」开关控制，默认开。
+  剩余可选项：One UI 8.5 的窄居中搜索胶囊，只改宽度/外边距/圆角，不动停靠逻辑。
 - **自定义排序**：参考 `legacy/app/src/main/java/com/example/oneuidesktop/` 的
   `HomeItem` JSON；在 `lawnchair/src/app/lawnchair/allapps/` 新增 `AppSortMode`
   （字母 / 手动 / 频率），持久化到 SharedPreferences，拖拽调序复用
@@ -270,6 +302,9 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - [ ] 键盘弹出时点菜单先收键盘；点遮罩关闭后抽屉仍打开
 - [ ] 键盘弹出后搜索栏在键盘上方，三点菜单可点
 - [ ] 抽屉字母分组：首字母完整可见、顺序正确；文件夹 / 搜索结果 / 长按菜单正常
+- [ ] 抽屉索引条：静止为 3dp 细灰轨道；拖动时滑块加粗、蓝色圆形气泡字母正确、
+      列表跳到对应 section；松手后滑块恢复细条
+- [ ] 「字母分组标题」开关：关闭后无行内标题，仅保留右侧索引，重新打开后恢复
 - [ ] 搜索框隐藏开关：打开后列表不留底部空白
 - [ ] 长按桌面、拖拽图标、最近任务不受影响
 - [ ] `docs/refactor/shots/` 截图更新

@@ -211,8 +211,28 @@ One UI 的抽屉搜索框在**底部**，网格从顶部开始、可以滚到搜
 | 范围 | 只影响字母序（`drawerList = true`）；文件夹仍排在最前；搜索结果和分类模式不插入标题 |
 
 > One UI 7 的字母序抽屉实际没有行内字母标题，而是右侧字母索引条 + 拖动时的大号字母
-> 气泡。这里的行内标题是「按字母分组」的第一步，用来验证分组数据和行高；下一步把
-> AOSP 快速滚动条改成 One UI 的细灰条 + 蓝色字母气泡，并评估是否把行内标题改为可选。
+> 气泡。行内标题现在由「字母分组标题」开关控制（默认开），关掉后只保留右侧索引。
+
+### 5.8 抽屉右侧索引条
+
+AOSP 的 `RecyclerViewFastScroller` 画的是 6–8dp 的主题色长条，拖动时用
+`FastScrollThumbDrawable` 的泪滴气泡。One UI 的做法是「细灰轨道 + 拖动加粗的滑块 +
+蓝色圆形字母气泡」，因此新增 `OneUiFastScroller` 子类，只替换绘制和气泡定位；
+滚动位置映射、触摸判定、section 切换仍然沿用 AOSP 实现。
+
+| 层 | 改动 |
+| --- | --- |
+| 布局 | `all_apps_fast_scroller.xml` 的标签换成 `app.lawnchair.views.OneUiFastScroller`；只作用于应用抽屉，小部件选择器仍用 AOSP 版本 |
+| 轨道 | 3dp 宽、`TextColorPrimary` 10% 透明度、圆角胶囊，从列表顶部贯穿到底部 |
+| 滑块 | 静止 3dp、拖动 6dp（150ms 展开），高度沿用 `fastscroll_thumb_height`（52dp），40% 透明度 |
+| 气泡 | 52dp 蓝色（`#3E8EFF`）圆形 + 白色 22sp medium 字母；拖动开始时从 0.7 缩放到 1.0 |
+| 定位 | `OneUiFastScroller#positionBubble` 用滑块中心对齐气泡中心，并夹在轨道范围内；AOSP 的泪滴气泡公式不再使用 |
+| 手势 | 继续调用 `systemGestureExclusionRects`，贴着右边缘拖动不会触发返回手势 |
+| 分组标题 | 新增 `pref_drawerSectionHeaders`（默认开）。关闭后 `addAppsWithSections` 直接走 AOSP 实现，抽屉只剩右侧索引，与 One UI 原版一致 |
+
+改动集中在三处：`OneUiFastScroller.kt`（绘制 / 气泡）、`all_apps_fast_scroller.xml`
+（换 View 类型）、`AppDrawerPreferences.kt`（开关）。`AllAppsRecyclerView` 的
+`scrollToPositionAtProgress` 和 `AllAppsFastScrollHelper` 没有改动。
 
 ## 6. 构建与运行
 
@@ -260,11 +280,14 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 | 抽屉三点菜单 | 打开 One UI 底部菜单；排序页可进入/返回，设置页正常跳转，点遮罩关闭后抽屉仍在 |
 | 抽屉菜单 + 键盘 | 键盘弹出时点三点菜单，键盘先收起，菜单出现在抽屉底部 |
 | 抽屉分组 | 字母序下按 B/C/D/O/R/S/T/W/X 分组；首字母不被状态栏或列表裁剪；文件夹、搜索结果、长按菜单、键盘避让不受影响 |
+| 抽屉索引条 | 静止 3dp 半透明轨道；拖动时滑块 3dp→6dp、蓝色 52dp 圆形气泡显示当前字母；列表跳到对应 section（B→D→W 已验） |
+| 分组标题开关 | 关闭后无行内标题、仅保留右侧索引；重新打开恢复分组 |
 | 长按桌面 | 「背景 / 小部件 / 启动器设置」菜单正常，时钟层未阻塞手势 |
 | 最近任务 | Quickstep 正常，时钟不会出现在任务快照里 |
 
 截图：`docs/refactor/shots/home.png`（首屏）、`drawer.png`（抽屉）、
-`drawer-sections.png`（抽屉字母分组）、`drawer-keyboard.png`（抽屉 + 键盘）、
+`drawer-sections.png`（抽屉字母分组）、`drawer-index.png`（索引条静止状态）、
+`drawer-index-drag.png`（拖动字母气泡）、`drawer-keyboard.png`（抽屉 + 键盘）、
 `drawer-menu.png`（抽屉底部菜单）、`drawer-sort.png`（排序子页）、
 `long-press.png`（长按菜单）、`recents.png`（最近任务）。
 
@@ -273,10 +296,9 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 1. ~~**首屏形态**：4×6 网格 + 5 Dock + 时钟/日期 + 默认排布~~ ✅ 已完成
 2. ~~**抽屉底部搜索栏**：底部停靠胶囊 + 三点菜单 + 键盘避让~~ ✅ 已完成
 3. ~~**抽屉底部菜单**：排序 / 设置底部菜单、排序子页、返回与键盘处理~~ ✅ 已完成
-4. **抽屉分组 / 索引**：行内字母标题已完成（`OneUiAllAppsGridAdapter`）；下一步实现
-   One UI 右侧字母索引 + 拖动字母气泡（当前 AOSP 快速滚动条仍是蓝色长条），
-   并评估把行内标题做成可关闭项。One UI 8.5 的窄居中搜索胶囊作为可选视觉分支
-   （只改宽度/外边距/圆角，不动停靠逻辑）。
+4. ~~**抽屉分组 / 索引**：行内字母标题、右侧细灰索引条、拖动字母气泡、分组标题开关~~
+   ✅ 已完成。剩余可选项：One UI 8.5 的窄居中搜索胶囊（只改宽度/外边距/圆角，
+   不动停靠逻辑）。
 5. **时钟组件化**：把自绘覆盖层升级成真正的 AppWidget（`OneUiClockWidgetProvider` +
    `<appwidget>` 默认布局），让它可移除、可换样式（One UI 有 4 种时钟样式）。
    随页面滚动已由 `OneUiClockView` 完成；AppWidget 绑定仍受 `BIND_APPWIDGET`

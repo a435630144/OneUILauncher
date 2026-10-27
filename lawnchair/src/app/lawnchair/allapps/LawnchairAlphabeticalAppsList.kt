@@ -119,7 +119,11 @@ class LawnchairAlphabeticalAppsList<T>(
             val remainingApps = appList.filterNotNull().filterNot { app ->
                 filteredList.contains(app) && prefs.folderApps.get()
             }
-            position = addAppsWithAlphabetSections(remainingApps, position)
+            position = if (prefs.drawerSectionHeaders.get()) {
+                addAppsWithAlphabetSections(remainingApps, position)
+            } else {
+                super.addAppsWithSections(remainingApps, position)
+            }
         }
 
         return position
