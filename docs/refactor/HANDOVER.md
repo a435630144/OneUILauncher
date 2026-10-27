@@ -160,7 +160,7 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 ## 6. 下一步（按优先级）
 
-### 6.1 抽屉搜索栏与底部菜单（已完成，提交 `39e0fc5` + 底部菜单提交见 §10）
+### 6.1 抽屉搜索栏与底部菜单（已完成，提交 `39e0fc5` / `cec482e`）
 
 当前工作树应保持干净。后续如果继续改抽屉，提交前确认：
 - `git status` 没有 `build/`、`.gradle/`、`local.properties` 等产物；
@@ -265,6 +265,8 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 | 提交 | 内容 |
 | --- | --- |
+| `cec482e` | 抽屉：三点菜单改为 One UI 底部菜单 |
+| `586b3f6` | 文档：交接文档记录时钟提交 |
 | `a0bdc33` | 时钟：跟随 Workspace 首页滚动 |
 | `0e90314` | 文档：交接文档补充最近提交列表 |
 | `c57d1ba` | 文档：修正交接文档的 HEAD 与截图命令 |
