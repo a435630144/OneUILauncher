@@ -63,10 +63,11 @@
         <!--
           One UI clock / date block. It is pinned under the status bar and the
           first workspace row is reserved for it by default_workspace_4x6.xml.
-          Kept as a plain view for now; it should become a real app widget once
-          the One UI widget host lands (docs/refactor/ARCHITECTURE.md).
+          OneUiClockView keeps it glued to the first workspace page so it slides
+          away with the page. It should become a real app widget once the One UI
+          widget host lands (docs/refactor/ARCHITECTURE.md).
         -->
-        <LinearLayout
+        <app.lawnchair.views.OneUiClockView
             android:id="@+id/oneui_clock"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -109,7 +110,7 @@
                 android:shadowRadius="6"
                 android:textColor="#E6FFFFFF"
                 android:textSize="14sp" />
-        </LinearLayout>
+        </app.lawnchair.views.OneUiClockView>
 
         <include
             android:id="@+id/drop_target_bar"

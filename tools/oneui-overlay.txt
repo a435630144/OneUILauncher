@@ -23,6 +23,7 @@ lawnchair/res/drawable/oneui_icon_background.xml
 lawnchair/res/drawable/oneui_icon_foreground.xml
 lawnchair/src/app/lawnchair/allapps/AllAppsSearchInput.kt
 lawnchair/src/app/lawnchair/allapps/views/SearchContainerView.kt
+lawnchair/src/app/lawnchair/views/OneUiClockView.kt
 lawnchair/src/app/lawnchair/preferences/PreferenceManager.kt
 lawnchair/src/app/lawnchair/ui/theme/Shape.kt
 lawnchair/src/app/lawnchair/ui/theme/Type.kt

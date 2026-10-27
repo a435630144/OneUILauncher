@@ -2,7 +2,7 @@
 
 > 更新时间：2026-10-27
 > 工作目录：`E:\OneDrive\家里台式\桌面\temp\OneUi_Desktop`
-> 分支：`main`，当前 HEAD `c57d1ba`（以 `git log` 为准）
+> 分支：`main`（HEAD 以 `git log` 为准）
 > 架构与设计取舍见 [ARCHITECTURE.md](./ARCHITECTURE.md)，SESL 取舍见 [SESL-DECISION.md](./SESL-DECISION.md)。
 
 ---
@@ -10,9 +10,9 @@
 ## 1. 一句话状态
 
 底层 Launcher3 / Lawnchair 15 已经能构建、能装、能当默认桌面；首屏 4×6 + 5 Dock
-+ 时钟覆盖层完成；应用抽屉的**底部搜索胶囊**（One UI 8.0 样式）已完成并在模拟器
-验证布局、三点菜单、键盘避让和输入态背景保持。下一步是时钟 AppWidget、抽屉分组、
-自定义排序、设置页卡片化和动画复刻。
++ **随页面滑动的时钟覆盖层**完成；应用抽屉的**底部搜索胶囊**（One UI 8.0 样式）已完成
+并在模拟器验证布局、三点菜单、键盘避让和输入态背景保持。下一步是时钟 AppWidget、
+抽屉分组、自定义排序、设置页卡片化和动画复刻。
 
 当前 APK：
 
@@ -34,14 +34,14 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 应用身份 | `com.oneui.desktop`、显示名「OneUI 桌面」、无 `.debug` 后缀 | `build.gradle` |
 | 网格 | 4 列 × 6 行、Dock 5 位，DB 名 `launcher_6_4_5.db` | `device_profiles.xml`、`PreferenceManager.kt` |
 | 首屏 | 第 0 行留空给时钟；第 1 行 4 图标；Dock 5 图标 | `default_workspace_4x6.xml` |
-| 时钟 | 44sp 时间 + 14sp 中文日期覆盖层（非 AppWidget） | `lawnchair/res/layout/launcher.xml` |
+| 时钟 | 44sp 时间 + 14sp 中文日期，随 Workspace 页面滚动（非 AppWidget） | `lawnchair/res/layout/launcher.xml`、`OneUiClockView.kt` |
 | 视觉 | squircle 图标、单行抽屉标签、12/16/20/26dp 圆角、One UI 字号 | `config.xml`、`Shape.kt`、`Type.kt` |
 | 抽屉 | 底部停靠搜索胶囊、24dp 圆角、右端三点菜单、键盘弹出时上移 | `search_container_all_apps.xml`、`AllAppsSearchInput.kt`、`ActivityAllAppsContainerView.java` |
 | 文档 | 架构、验证记录、上游同步、交接说明 | `docs/refactor/` |
 
 ---
 
-## 3. 抽屉搜索栏的实现要点
+## 3. 抽屉搜索栏与时钟的实现要点
 
 1. **底部停靠**：`search_container_all_apps.xml` 根布局 `layout_alignParentBottom="true"`；
    `AllAppsContent` 的 header 去掉了 `layout_below`。
@@ -63,6 +63,22 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 > 注意：`hideAppDrawerSearchBar` 打开时，列表不再预留底部空白，搜索栏本身由
 > `AllAppsSearchInput` 的 `isInvisible` / 高度 0 逻辑隐藏。
 
+### 3.1 时钟随页面滚动
+
+时钟在 `launcher.xml` 里仍然是 `DragLayer` 的子 View，但 `OneUiClockView` 会跟随
+第一页：
+
+1. 在 `onAttachedToWindow` 里找到 `R.id.workspace`，用
+   `ViewTreeObserver.OnPreDrawListener` 每帧读取 `workspace.scrollX`；
+2. `translationX = -scrollX`，滑到第二页时时钟被推出屏幕，滑回第一页时再推回来；
+3. 只在 `scrollX` 变化时更新，避免每帧重复写属性；
+4. 启动时如果恢复到非 0 页，pre-draw 会在首帧前修正；
+5. 用 pre-draw 而不是 `setOnScrollChangeListener`：实测后者在页面切换时不可靠。
+
+验证方法：给 Workspace 增加第二页（拖一个图标到右边缘，或临时改数据库的
+`favorites.screen`），左滑后时钟应完全离开屏幕，右滑回第一页后恢复；抽屉、长按菜单、
+最近任务不受影响。
+
 ---
 
 ## 4. 已知问题 / 风险
@@ -71,7 +87,7 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | --- | --- | --- |
 | GitHub 网络不稳定 | 无法 push / 拉取上游 | 网络恢复后 `git push origin main`；不要尝试 unshallow 旧 fork |
 | 模拟器偶尔退出 | 验证中断 | 用 `-no-window -no-snapshot -gpu off` 启动；截图用 `adb shell screencap` + `adb pull`（PowerShell 5.1 不要用 `>` 重定向二进制）；必要时重启 AVD |
-| 时钟仍是覆盖层 | 不随页面滚动、不能移除、不能换样式 | 迁移到 AppWidget（见 §6） |
+| 时钟不能当作页面子项 | 已随第一页滚动，但长按不能选中/移除，样式固定 | 迁移到 AppWidget（见 §6.2）；已实现方案 B 的滚动同步 |
 | 抽屉三点菜单只是入口 | 不是 One UI 的底部菜单 | 先复用 `Preferences` 路由，后续做 `OneUiDrawerMenuBottomSheet` |
 | 抽屉没有分组 / 排序 | 与 One UI 仍有差距 | 见 §6 的排序与分组里程碑 |
 | 键盘弹出时列表底部被键盘遮住 | 搜索结果区域变小 | 后续在 IME 显示时减少列表底部 padding，或滚动到结果 |
@@ -142,10 +158,11 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 >   用户同意后再写入数据库；
 > - 方案 B：把时钟做成页面内自绘控件（随 Workspace 滚动、设置里可隐藏），
 >   等有系统签名或绑定流程后再升级为 AppWidget。
-> 当前代码仍是 `launcher.xml` 的覆盖层，属于方案 B 的过渡形态。
+> 当前代码是 `launcher.xml` 的 `OneUiClockView`，已完成方案 B 的页面滚动同步；
+> 剩余缺口是「可长按移除 / 可换样式」。
 
 目标：把 `launcher.xml` 里的 `@id/oneui_clock` 覆盖层替换为真正的 AppWidget，
-让它随 Workspace 页面滚动、可长按移除、可在「小部件」里换样式。
+让它可长按移除、可在「小部件」里换样式（随页面滚动已由 `OneUiClockView` 实现）。
 
 建议步骤：
 1. 新建 `lawnchair/src/app/lawnchair/widget/OneUiClockWidgetProvider.kt`（继承
@@ -184,6 +201,7 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 - [ ] `:assembleLawnWithQuickstepGithubDebug` 成功，无新增 `error:`
 - [ ] 首屏 4×6、Dock 5、时钟时间/日期正常
+- [ ] 首页/第二页来回滑动时时钟跟随第一页移出/恢复，其他页面没有残影
 - [ ] 抽屉底部搜索胶囊：位置、圆角、提示文字、三点菜单
 - [ ] 键盘弹出后搜索栏在键盘上方，三点菜单可点
 - [ ] 搜索框隐藏开关：打开后列表不留底部空白

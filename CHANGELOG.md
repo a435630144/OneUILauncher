@@ -48,3 +48,21 @@
 - 新增 `docs/refactor/HANDOVER.md`（开发 / 交接状态、已知问题、下一步）。
 - `ARCHITECTURE.md` 增补 §5.5 键盘与三点菜单说明，更新验证记录和里程碑。
 - README 增加交接文档入口。
+
+## v0.9 — 时钟随页面滚动（2026-10-27）
+
+**首屏**
+
+- 新增 `app.lawnchair.views.OneUiClockView`，把时钟从固定覆盖层改为跟随第一页滑动：
+  在 `OnPreDrawListener` 里读取 `Workspace.getScrollX()`，用 `translationX = -scrollX`
+  定位；滑到第二页时推出屏幕，滑回第一页时恢复。
+- 改用 pre-draw 而不是 `setOnScrollChangeListener`：后者在页面切换时没有回调；
+  pre-draw 也能覆盖启动时恢复到非 0 页的情况。
+- 长按桌面、拖拽图标、抽屉、最近任务均不受影响；时钟仍不是可移除的 AppWidget，
+  `BIND_APPWIDGET` 签名权限限制见 `docs/refactor/HANDOVER.md` §6.2。
+
+**文档**
+
+- `ARCHITECTURE.md` §5.3 改写时钟实现，§7 增加翻页验证，§8 更新时钟里程碑。
+- `HANDOVER.md` 增补 §3.1 时钟滚动说明、已知问题与验收项。
+- 更新首屏截图 `docs/refactor/shots/home.png`。
