@@ -85,6 +85,7 @@ sesl    app.oneui.design.sesl（暂不启用）    —— 唯一允许 import SE
 | **首屏 One UI 时钟 / 日期（随页面滚动）** | `lawnchair/res/layout/launcher.xml`（`oneui_clock`）、`lawnchair/src/app/lawnchair/views/OneUiClockView.kt` |
 | **首屏默认排布（4 图标 + 5 Dock）** | `lawnchair/res/xml/default_workspace_4x6.xml` |
 | **抽屉底部搜索栏 + 三点菜单** | `lawnchair/res/layout/search_container_all_apps.xml`、`AllAppsSearchInput.kt`、`ActivityAllAppsContainerView.java` |
+| **抽屉 One UI 底部菜单（排序 / 设置）** | `lawnchair/src/app/lawnchair/ui/popup/OneUiDrawerMenu.kt` |
 
 ## 5. 首屏形态（本阶段核心）
 
@@ -157,7 +158,7 @@ One UI 的抽屉搜索框在**底部**，网格从顶部开始、可以滚到搜
 | Insets | `AllAppsSearchInput#setInsets` 在停靠模式下把导航栏 inset 当作 `bottomMargin`，并跳过原来的 `offsetTopAndBottom(allAppsSearchVerticalOffset)`；`onApplyWindowInsets` 另外读取 IME inset，键盘弹出时把搜索栏抬到键盘上方 |
 | 列表 | 停靠时 `AdapterHolder#applyPadding` 额外预留 `search_box_container_height + oneui_search_bar_bottom_margin`，最后一排图标可滚出搜索框；快速滚动条同样上移 |
 | 外观 | 48dp 高、24dp 圆角胶囊、16sp 提示文字「搜索」；无放大镜，右端是 48dp 三点菜单按钮（`oneui_ic_more_vert`） |
-| 交互 | 点搜索框获得焦点并弹出键盘；点三点菜单打开 `PreferenceActivity` 的应用抽屉设置页（后续可替换为 One UI 风格底部菜单） |
+| 交互 | 点搜索框获得焦点并弹出键盘；点三点菜单先收起键盘，再打开 One UI 风格底部菜单（见 §5.6） |
 
 关键点：
 
@@ -174,6 +175,26 @@ One UI 的抽屉搜索框在**底部**，网格从顶部开始、可以滚到搜
 - 视觉基线取 One UI 8.0 的**全宽胶囊 + 三点菜单**（左对齐「搜索」）。One UI 8.5
   改成更窄的居中浮层，后续如要跟进，只需改 `search_wrapper` 的宽度/外边距和
   `search_input_fg` 的圆角，不必动停靠逻辑。
+
+### 5.6 抽屉底部菜单
+
+三点菜单不再直接跳设置页，而是先弹 One UI 风格底部菜单
+（`lawnchair/src/app/lawnchair/ui/popup/OneUiDrawerMenu.kt`）：
+
+- **入口**：`AllAppsSearchInput` 点击 `menu_btn` 时先 `input.clearFocus()` +
+  `launcher.hideKeyboard()`，再用 `ComposeBottomSheet.show(launcher)` 弹层。
+  这样键盘不会压在菜单上，抽屉本身保持打开。
+- **主菜单**：顶部 32×4dp 拖动条；两行 56dp 选项，左侧 24dp 图标、16sp 文案，
+  右侧当前值 + 箭头：
+  - **排序**：右侧显示「字母顺序」，点进去是排序子页。
+  - **设置**：关闭菜单并打开 `PreferenceActivity` 的 `AppDrawer` 路由。
+- **排序子页**：返回箭头 + 20sp 标题；「字母顺序」单选并打勾；「自定义」置灰，
+  副标题「即将支持」。自定义排序需要新增排序模式与拖拽持久化（见 §8），
+  所以这里先如实标注，不做假开关。
+- **返回行为**：排序子页用 `BackHandler` 回到主菜单；再返回或点遮罩才关闭整个
+  菜单。关闭后抽屉仍停留在应用列表，不会退回桌面。
+- **外观**：复用 `ComposeBottomSheet` 的 24dp 顶部圆角、遮罩和开合动画；
+  内容加 `navigationBarsOrDisplayCutoutPadding()`，三按钮导航下不会压住按钮。
 
 ## 6. 构建与运行
 
@@ -218,31 +239,34 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 | 旧 UI 残留 | 无 AOSP 搜索条、无 smartspace「点击以设置」页 |
 | 抽屉 | 4 列网格、单行标签、squircle 图标；搜索胶囊停靠底部（48dp 高、24dp 圆角、左对齐「搜索」、右侧三点菜单） |
 | 抽屉键盘 | 点搜索框弹出键盘后，搜索栏保持在键盘上方，输入时胶囊背景不消失 |
-| 抽屉三点菜单 | 打开 `PreferenceActivity` 的「应用抽屉」设置页 |
+| 抽屉三点菜单 | 打开 One UI 底部菜单；排序页可进入/返回，设置页正常跳转，点遮罩关闭后抽屉仍在 |
+| 抽屉菜单 + 键盘 | 键盘弹出时点三点菜单，键盘先收起，菜单出现在抽屉底部 |
 | 长按桌面 | 「背景 / 小部件 / 启动器设置」菜单正常，时钟层未阻塞手势 |
 | 最近任务 | Quickstep 正常，时钟不会出现在任务快照里 |
 
 截图：`docs/refactor/shots/home.png`（首屏）、`drawer.png`（抽屉）、
-`drawer-keyboard.png`（抽屉 + 键盘）、`long-press.png`（长按菜单）、
-`recents.png`（最近任务）。
+`drawer-keyboard.png`（抽屉 + 键盘）、`drawer-menu.png`（抽屉底部菜单）、
+`drawer-sort.png`（排序子页）、`long-press.png`（长按菜单）、`recents.png`（最近任务）。
 
 ## 8. 下一步里程碑
 
 1. ~~**首屏形态**：4×6 网格 + 5 Dock + 时钟/日期 + 默认排布~~ ✅ 已完成
 2. ~~**抽屉底部搜索栏**：底部停靠胶囊 + 三点菜单 + 键盘避让~~ ✅ 已完成
-3. **抽屉分组**：按首字母分组吸顶、隐藏标签开关；One UI 8.5 的窄居中搜索胶囊
+3. ~~**抽屉底部菜单**：排序 / 设置底部菜单、排序子页、返回与键盘处理~~ ✅ 已完成
+4. **抽屉分组**：按首字母分组吸顶、隐藏标签开关；One UI 8.5 的窄居中搜索胶囊
    作为可选视觉分支（只改宽度/外边距/圆角，不动停靠逻辑）。
-4. **时钟组件化**：把自绘覆盖层升级成真正的 AppWidget（`OneUiClockWidgetProvider` +
+5. **时钟组件化**：把自绘覆盖层升级成真正的 AppWidget（`OneUiClockWidgetProvider` +
    `<appwidget>` 默认布局），让它可移除、可换样式（One UI 有 4 种时钟样式）。
    随页面滚动已由 `OneUiClockView` 完成；AppWidget 绑定仍受 `BIND_APPWIDGET`
    签名权限限制（见 HANDOVER §6.2），需要先接绑定授权流程。
-5. **自定义排序**：Lawnchair 15 只有字母序（`LawnchairAlphabeticalAppsList`），
+6. **自定义排序**：Lawnchair 15 只有字母序（`LawnchairAlphabeticalAppsList`），
    需要新增排序模式（字母 / 手动 / 使用频率）和拖拽调序，
-   数据结构对齐现有 Compose 版 `HomeItem` 的 JSON 持久化。
-6. **设置页收口**：只保留桌面相关项，其余隐藏；二级页改用 One UI 分组卡片。
-7. **动画复刻**：抽屉开合（背景模糊 + 图标错落）、图标按压缩放、页面切换、
+   数据结构对齐现有 Compose 版 `HomeItem` 的 JSON 持久化。排序子页已就位，
+   当前「自定义」置灰标注「即将支持」。
+7. **设置页收口**：只保留桌面相关项，其余隐藏；二级页改用 One UI 分组卡片。
+8. **动画复刻**：抽屉开合（背景模糊 + 图标错落）、图标按压缩放、页面切换、
    长按菜单弹出/收起，统一用 One UI 的 `FastOutSlowIn` / 弹簧参数。
-8. **裁剪 Quickstep**：15-dev 已无 `withoutQuickstep` flavor，需要自己接一个
+9. **裁剪 Quickstep**：15-dev 已无 `withoutQuickstep` flavor，需要自己接一个
    不带 recents 的构建变体，把 332 MB 的基线压下来。
 
 ## 9. 仓库与上游同步

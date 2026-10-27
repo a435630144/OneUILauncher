@@ -10,9 +10,10 @@
 ## 1. 一句话状态
 
 底层 Launcher3 / Lawnchair 15 已经能构建、能装、能当默认桌面；首屏 4×6 + 5 Dock
-+ **随页面滑动的时钟覆盖层**完成；应用抽屉的**底部搜索胶囊**（One UI 8.0 样式）已完成
-并在模拟器验证布局、三点菜单、键盘避让和输入态背景保持。下一步是时钟 AppWidget、
-抽屉分组、自定义排序、设置页卡片化和动画复刻。
++ **随页面滑动的时钟覆盖层**完成；应用抽屉的**底部搜索胶囊**（One UI 8.0 样式）和
+**三点菜单打开的 One UI 底部菜单**（排序 / 设置）已完成，并在模拟器验证布局、键盘避让、
+排序子页进出、遮罩关闭和输入态背景保持。下一步是抽屉分组、自定义排序、设置页卡片化
+和动画复刻；时钟 AppWidget 仍卡在 `BIND_APPWIDGET` 授权流程。
 
 当前 APK：
 
@@ -37,6 +38,7 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 时钟 | 44sp 时间 + 14sp 中文日期，随 Workspace 页面滚动（非 AppWidget） | `lawnchair/res/layout/launcher.xml`、`OneUiClockView.kt` |
 | 视觉 | squircle 图标、单行抽屉标签、12/16/20/26dp 圆角、One UI 字号 | `config.xml`、`Shape.kt`、`Type.kt` |
 | 抽屉 | 底部停靠搜索胶囊、24dp 圆角、右端三点菜单、键盘弹出时上移 | `search_container_all_apps.xml`、`AllAppsSearchInput.kt`、`ActivityAllAppsContainerView.java` |
+| 抽屉菜单 | 三点菜单打开 One UI 底部菜单：拖动条、排序 / 设置行、排序子页（字母序选中、自定义「即将支持」）、返回与遮罩关闭 | `ui/popup/OneUiDrawerMenu.kt`、`ComposeBottomSheet.kt` |
 | 文档 | 架构、验证记录、上游同步、交接说明 | `docs/refactor/` |
 
 ---
@@ -55,8 +57,9 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
    因此键盘弹出后搜索栏仍在键盘上方。
 5. **外观**：48dp 高胶囊、24dp 圆角、16sp「搜索」、右端 `oneui_ic_more_vert` 三点。
    **没有放大镜**（与 One UI 8.0 一致）。
-6. **三点菜单**：目前跳到 `PreferenceActivity` 的 `AppDrawer` 路由；
-   后续要替换成 One UI 风格底部菜单（排序 / 设置）。
+6. **三点菜单**：点击后先 `input.clearFocus()` + `launcher.hideKeyboard()`，
+   再用 `ComposeBottomSheet` 打开 One UI 底部菜单（默认 / 排序子页）；设置行
+   关闭菜单后跳 `PreferenceActivity` 的 `AppDrawer` 路由，详见 §3.2。
 7. **输入态**：`ActivityAllAppsContainerView` 的 `bgVisible` 判断在停靠模式下
    强制为 `true`，否则 `isSearching()` 会把胶囊背景设为透明。
 
@@ -79,6 +82,23 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 `favorites.screen`），左滑后时钟应完全离开屏幕，右滑回第一页后恢复；抽屉、长按菜单、
 最近任务不受影响。
 
+### 3.2 抽屉底部菜单
+
+`lawnchair/src/app/lawnchair/ui/popup/OneUiDrawerMenu.kt` 用 Compose 实现
+One UI 8 的抽屉溢出菜单，复用 `ComposeBottomSheet.show(launcher)`：
+
+1. **入口**：`AllAppsSearchInput` 的 `menu_btn` 先清焦点、收键盘，再弹层，
+   避免键盘顶住菜单；抽屉保持打开，不会退回桌面。
+2. **主菜单**：顶部 32×4dp 拖动条；两行 56dp 选项（24dp 图标 + 16sp 文案）：
+   「排序」右侧显示当前模式「字母顺序」，点入排序子页；「设置」关闭菜单后打开
+   `PreferenceActivity.createIntent(context, AppDrawer)`。
+3. **排序子页**：20sp 标题 + 返回箭头；「字母顺序」单选打勾；「自定义」置灰，
+   副标题「即将支持」。Lawnchair 15 只有字母序，不做假开关。
+4. **返回**：`BackHandler(enabled = showSortOptions)` 先回主菜单；再按返回或点遮罩
+   才关闭整个弹层。`ComposeBottomSheet.close(true)` 会同时收起键盘。
+5. **资源**：`oneui_drawer_menu` 改为「更多选项」，新增
+   `oneui_drawer_sort*` 中英文案；覆盖层清单已加入 `OneUiDrawerMenu.kt`。
+
 ---
 
 ## 4. 已知问题 / 风险
@@ -88,7 +108,7 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | GitHub 网络不稳定 | 无法 push / 拉取上游 | 网络恢复后 `git push origin main`；不要尝试 unshallow 旧 fork |
 | 模拟器偶尔退出 | 验证中断 | 用 `-no-window -no-snapshot -gpu off` 启动；截图用 `adb shell screencap` + `adb pull`（PowerShell 5.1 不要用 `>` 重定向二进制）；必要时重启 AVD |
 | 时钟不能当作页面子项 | 已随第一页滚动，但长按不能选中/移除，样式固定 | 迁移到 AppWidget（见 §6.2）；已实现方案 B 的滚动同步 |
-| 抽屉三点菜单只是入口 | 不是 One UI 的底部菜单 | 先复用 `Preferences` 路由，后续做 `OneUiDrawerMenuBottomSheet` |
+| 抽屉三点菜单 | ~~只是入口~~ 已改为 One UI 底部菜单（排序 / 设置） | 排序子页已就位；「自定义」待实现排序模式与拖拽持久化（见 §6.3） |
 | 抽屉没有分组 / 排序 | 与 One UI 仍有差距 | 见 §6 的排序与分组里程碑 |
 | 键盘弹出时列表底部被键盘遮住 | 搜索结果区域变小 | 后续在 IME 显示时减少列表底部 padding，或滚动到结果 |
 | 模拟器 3 按钮导航 | 视觉与手势导航不同 | 最终需在 gesture navigation 下再验一次 inset |
@@ -140,13 +160,17 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 ## 6. 下一步（按优先级）
 
-### 6.1 抽屉搜索栏（已完成，提交 `39e0fc5`）
+### 6.1 抽屉搜索栏与底部菜单（已完成，提交 `39e0fc5` + 底部菜单提交见 §10）
 
 当前工作树应保持干净。后续如果继续改抽屉，提交前确认：
 - `git status` 没有 `build/`、`.gradle/`、`local.properties` 等产物；
 - `tools/oneui-overlay.txt` 已包含本轮所有文件；
 - 截图已更新到 `docs/refactor/shots/`；
 - `CHANGELOG.md` 与 `ARCHITECTURE.md` 的验证记录同步。
+
+底部菜单（`OneUiDrawerMenu.kt`）后续扩展时注意：新增菜单行保持 56dp 高、
+左 24dp 图标、右端「当前值 + 箭头」；子页统一用 `BackHandler` 回主菜单，
+不要直接关闭整个弹层。
 
 ### 6.2 时钟 AppWidget
 
@@ -180,7 +204,9 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - 排序：参考 `legacy/app/src/main/java/com/example/oneuidesktop/` 的 `HomeItem` JSON；
   在 `lawnchair/src/app/lawnchair/allapps/` 新增 `AppSortMode`（字母 / 手动 / 频率），
   持久化到 SharedPreferences，拖拽调序复用 `AllAppsGridAdapter` 的 drag 回调。
-- 三点菜单改为 One UI 底部菜单：排序、抽屉设置、搜索设置。
+- 排序子页已在 `OneUiDrawerMenu.kt` 就位：实现 `AppSortMode` 后把「字母顺序」的
+  单选状态和「自定义」的置灰逻辑接到真实偏好，去掉「即将支持」副标题。
+- 底部菜单主入口已经完成，后续只补「搜索设置」等 One UI 8.5 菜单项。
 
 ### 6.4 设置页 One UI 化
 
@@ -203,6 +229,8 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - [ ] 首屏 4×6、Dock 5、时钟时间/日期正常
 - [ ] 首页/第二页来回滑动时时钟跟随第一页移出/恢复，其他页面没有残影
 - [ ] 抽屉底部搜索胶囊：位置、圆角、提示文字、三点菜单
+- [ ] 三点菜单打开底部菜单；排序子页可进入/返回；设置行跳转设置页
+- [ ] 键盘弹出时点菜单先收键盘；点遮罩关闭后抽屉仍打开
 - [ ] 键盘弹出后搜索栏在键盘上方，三点菜单可点
 - [ ] 搜索框隐藏开关：打开后列表不留底部空白
 - [ ] 长按桌面、拖拽图标、最近任务不受影响

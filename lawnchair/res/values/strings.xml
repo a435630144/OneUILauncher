@@ -79,7 +79,12 @@
     <string name="smartspace_preferences">Preferences</string>
     <string name="settings_button_text">桌面设置</string>
     <string name="oneui_search_hint">Search</string>
-    <string name="oneui_drawer_menu">App drawer settings</string>
+    <string name="oneui_drawer_menu">More options</string>
+    <string name="oneui_drawer_sort">Sort</string>
+    <string name="oneui_drawer_sort_alphabetical">Alphabetical order</string>
+    <string name="oneui_drawer_sort_custom">Custom order</string>
+    <string name="oneui_drawer_sort_custom_summary">Coming soon</string>
+    <string name="oneui_drawer_sort_back">Back</string>
     <string name="system_settings">System settings</string>
     <string name="title_change_settings">Change settings</string>
 

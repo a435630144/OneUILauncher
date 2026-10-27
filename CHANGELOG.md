@@ -66,3 +66,24 @@
 - `ARCHITECTURE.md` §5.3 改写时钟实现，§7 增加翻页验证，§8 更新时钟里程碑。
 - `HANDOVER.md` 增补 §3.1 时钟滚动说明、已知问题与验收项。
 - 更新首屏截图 `docs/refactor/shots/home.png`。
+
+## v0.10 — 抽屉 One UI 底部菜单（2026-10-27）
+
+**应用抽屉**
+
+- 三点菜单不再直接跳设置页，改为弹出 One UI 风格底部菜单：
+  顶部拖动条、56dp 菜单行、24dp 图标，主菜单为「排序 / 设置」。
+- 新增排序子页：返回箭头 + 20sp 标题，「字母顺序」单选打勾，
+  「自定义」置灰并标注「即将支持」；`BackHandler` 先回主菜单，
+  再返回或点遮罩才关闭弹层。
+- 打开菜单前清除搜索框焦点并收起键盘，避免键盘压住菜单；
+  关闭菜单后抽屉保持打开。
+- 设置行关闭菜单并跳转 `PreferenceActivity` 的 `AppDrawer` 路由。
+- 新增 `app.lawnchair.ui.popup.OneUiDrawerMenu`；`oneui_drawer_menu` 改为
+  「更多选项」，新增 `oneui_drawer_sort*` 中英文案。
+
+**文档**
+
+- `ARCHITECTURE.md` 新增 §5.6 抽屉底部菜单，更新 §5.5 交互、§7 验证与 §8 里程碑。
+- `HANDOVER.md` 增补 §3.2 菜单实现、已知问题与验收项，更新已完成表。
+- 新增截图 `docs/refactor/shots/drawer-menu.png`、`drawer-sort.png`。

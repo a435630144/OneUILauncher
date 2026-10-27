@@ -66,7 +66,12 @@
     <string name="smartspace_preferences">首选项</string>
     <string name="settings_button_text">桌面设置</string>
     <string name="oneui_search_hint">搜索</string>
-    <string name="oneui_drawer_menu">应用抽屉设置</string>
+    <string name="oneui_drawer_menu">更多选项</string>
+    <string name="oneui_drawer_sort">排序</string>
+    <string name="oneui_drawer_sort_alphabetical">字母顺序</string>
+    <string name="oneui_drawer_sort_custom">自定义</string>
+    <string name="oneui_drawer_sort_custom_summary">即将支持</string>
+    <string name="oneui_drawer_sort_back">返回</string>
     <string name="system_settings">系统设置</string>
     <string name="title_change_settings">更改设置</string>
     <!--

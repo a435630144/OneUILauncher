@@ -13,10 +13,12 @@
 - 首屏默认排布：设置 / 时钟 / 日历 / 文件 + 电话 / 短信 / 相机 / 图库 / 通讯录
 - 关闭 Lawnchair 的 smartspace 独立首屏页与 Dock 上方搜索条
 - 应用抽屉：底部 One UI 搜索胶囊 + 三点菜单，键盘弹出时自动上移
+- 抽屉三点菜单打开 One UI 底部菜单：排序（字母顺序 / 自定义即将支持）、设置
 - 应用抽屉、文件夹、小组件、通知角标、最近任务沿用 Lawnchair
 
 ![首屏](docs/refactor/shots/home.png)
 ![应用抽屉](docs/refactor/shots/drawer.png)
+![抽屉底部菜单](docs/refactor/shots/drawer-menu.png)
 
 更多截图与验证记录见 [docs/refactor/ARCHITECTURE.md](docs/refactor/ARCHITECTURE.md)；
 接手开发请先读 [docs/refactor/HANDOVER.md](docs/refactor/HANDOVER.md)。

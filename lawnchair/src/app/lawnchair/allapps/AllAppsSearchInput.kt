@@ -41,9 +41,9 @@ import app.lawnchair.qsb.setThemedIconResource
 import app.lawnchair.search.LawnchairRecentSuggestionProvider
 import app.lawnchair.search.algorithms.LawnchairSearchAlgorithm
 import app.lawnchair.theme.drawable.DrawableTokens
-import app.lawnchair.ui.preferences.PreferenceActivity
-import app.lawnchair.ui.preferences.navigation.AppDrawer
+import app.lawnchair.ui.popup.OneUiDrawerMenuContent
 import app.lawnchair.util.viewAttachedScope
+import app.lawnchair.views.ComposeBottomSheet
 import com.android.launcher3.Insettable
 import com.android.launcher3.InvariantDeviceProfile.OnIDPChangeListener
 import com.android.launcher3.LauncherState
@@ -152,11 +152,15 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
         }
 
         // One UI puts the app drawer overflow menu on the trailing edge of the
-        // search field. For now it opens the app drawer preferences; a One UI
-        // style bottom sheet (sort / settings) can replace this later.
+        // search field. It opens a bottom sheet with sorting and a shortcut to
+        // the app drawer settings instead of jumping straight to preferences.
         menuButton = ViewCompat.requireViewById(this, R.id.menu_btn)
         menuButton.setOnClickListener {
-            context.startActivity(PreferenceActivity.createIntent(context, AppDrawer))
+            input.clearFocus()
+            launcher.hideKeyboard()
+            ComposeBottomSheet.show(launcher) {
+                OneUiDrawerMenuContent(onClose = { close(true) })
+            }
         }
 
         prefs2.themedHotseatQsb.subscribeBlocking(scope = viewAttachedScope) { themed ->
