@@ -1,6 +1,6 @@
 # 交接文档（OneUI 桌面 / Lawnchair 15 基线）
 
-> 更新时间：2026-10-27
+> 更新时间：2026-10-28
 > 工作目录：`E:\OneDrive\家里台式\桌面\temp\OneUi_Desktop`
 > 分支：`main`（HEAD 以 `git log` 为准）
 > 架构与设计取舍见 [ARCHITECTURE.md](./ARCHITECTURE.md)，SESL 取舍见 [SESL-DECISION.md](./SESL-DECISION.md)。
@@ -303,7 +303,7 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 | 提交 | 内容 |
 | --- | --- |
-| 待补 | 抽屉：字母分组标题 |
+| `b6725f8` | 抽屉：字母分组标题 |
 | `cec482e` | 抽屉：三点菜单改为 One UI 底部菜单 |
 | `586b3f6` | 文档：交接文档记录时钟提交 |
 | `a0bdc33` | 时钟：跟随 Workspace 首页滚动 |

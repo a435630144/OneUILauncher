@@ -88,7 +88,7 @@
 - `HANDOVER.md` 增补 §3.2 菜单实现、已知问题与验收项，更新已完成表。
 - 新增截图 `docs/refactor/shots/drawer-menu.png`、`drawer-sort.png`。
 
-## v0.11 — 抽屉字母分组标题（2026-10-27）
+## v0.11 — 抽屉字母分组标题（2026-10-28）
 
 **应用抽屉**
 
