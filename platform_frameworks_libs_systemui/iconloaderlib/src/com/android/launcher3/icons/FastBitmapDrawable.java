@@ -51,15 +51,15 @@ public class FastBitmapDrawable extends Drawable implements Drawable.Callback {
     private static final Interpolator HOVER_EMPHASIZED_DECELERATE_INTERPOLATOR =
             new PathInterpolator(0.05f, 0.7f, 0.1f, 1.0f);
 
-    @VisibleForTesting protected static final float PRESSED_SCALE = 1.1f;
-    @VisibleForTesting protected static final float HOVERED_SCALE = 1.1f;
+    @VisibleForTesting protected static final float PRESSED_SCALE = 0.92f;
+    @VisibleForTesting protected static final float HOVERED_SCALE = 1.05f;
     public static final int WHITE_SCRIM_ALPHA = 138;
 
     private static final float DISABLED_DESATURATION = 1f;
     private static final float DISABLED_BRIGHTNESS = 0.5f;
     protected static final int FULLY_OPAQUE = 255;
 
-    public static final int CLICK_FEEDBACK_DURATION = 200;
+    public static final int CLICK_FEEDBACK_DURATION = 150;
     public static final int HOVER_FEEDBACK_DURATION = 300;
 
     private static boolean sFlagHoverEnabled = false;
@@ -267,8 +267,9 @@ public class FastBitmapDrawable extends Drawable implements Drawable.Callback {
             float endScale = isPressed ? PRESSED_SCALE : (isHovered ? HOVERED_SCALE : 1f);
             if (mScale != endScale) {
                 if (isVisible()) {
+                    // One UI: shrink immediately on touch down, ease back out on release.
                     Interpolator interpolator =
-                            isPressed != mIsPressed ? (isPressed ? ACCEL : DEACCEL)
+                            isPressed != mIsPressed ? (isPressed ? DEACCEL : ACCEL)
                                     : HOVER_EMPHASIZED_DECELERATE_INTERPOLATOR;
                     int duration =
                             isPressed != mIsPressed ? CLICK_FEEDBACK_DURATION

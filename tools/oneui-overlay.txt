@@ -37,6 +37,7 @@ lawnchair/src/app/lawnchair/ui/preferences/destinations/NotificationsPreferences
 lawnchair/src/app/lawnchair/ui/preferences/destinations/PreferencesDashboard.kt
 lawnchair/src/app/lawnchair/ui/preferences/navigation/PreferenceRoutes.kt
 lawnchair/src/app/lawnchair/ui/preferences/navigation/PreferenceNavigation.kt
+platform_frameworks_libs_systemui/iconloaderlib/src/com/android/launcher3/icons/FastBitmapDrawable.java
 lawnchair/src/app/lawnchair/ui/theme/Shape.kt
 lawnchair/src/app/lawnchair/ui/theme/Type.kt
 res/layout/all_apps_content.xml

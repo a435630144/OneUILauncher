@@ -231,6 +231,27 @@ adb shell input keyevent KEYCODE_BACK
 adb shell cmd notification allow_listener com.oneui.desktop/com.android.launcher3.notification.NotificationListener
 ```
 
+### 3.7 图标按压动画
+
+改的是 `platform_frameworks_libs_systemui/iconloaderlib/src/com/android/launcher3/icons/FastBitmapDrawable.java`：
+
+- `PRESSED_SCALE` 1.1 → **0.92**，`HOVERED_SCALE` 1.1 → 1.05；
+- `CLICK_FEEDBACK_DURATION` 200 → **150ms**；
+- 按下用 `DecelerateInterpolator`（立即响应），松开用 `AccelerateInterpolator`。
+
+图标缩小、文字标签不动；工作区 / 抽屉 / Dock / 文件夹预览共用该 drawable。
+注意这个文件在 `iconloaderlib` 子模块快照里，不在 `lawnchair/src`。
+
+**验证方法**（模拟器，按下后立刻截图，避免触发长按菜单）：
+
+```powershell
+adb shell input motionevent DOWN 151 500
+adb shell screencap -p /sdcard/press.png
+adb shell input motionevent UP 151 500
+```
+
+实测截图里设置图标从 240px 缩到约 220px，标签位置不变（`anim-icon-press.png`）。
+
 ---
 
 ## 4. 已知问题 / 风险
@@ -356,8 +377,9 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 ### 6.5 动画复刻
 
+- ~~图标按压：`0.92` 缩放 + `FastOutSlowIn`~~ ✅ 已改为 0.92 + 150ms，按下减速、
+  松开加速（§3.7）。
 - 抽屉开合：背景模糊 + 图标错落（`AllAppsTransitionController` / `AllAppsBackgroundDrawable`）；
-- 图标按压：`0.92` 缩放 + `FastOutSlowIn`；
 - 页面切换：One UI 的轻微视差与淡入；
 - 长按菜单：从触点弹性展开（`ArrowPopup` / `OptionsPopupView`）。
 
@@ -382,6 +404,7 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - [ ] 设置首页：布局 / 外观 / 交互 / 关于四张卡片，无公告、无备份 / 实验入口
 - [ ] 设置 → 通知：授权通知使用权后显示开关、颜色、数量；未授权时只有警告
 - [ ] 设置 → 图标与风格：标题正确，字体 / 图标 / 颜色正常，无通知圆点
+- [ ] 图标按压：按住图标缩小、松开回弹，文字标签不动
 - [ ] 搜索框隐藏开关：打开后列表不留底部空白
 - [ ] 长按桌面、拖拽图标、最近任务不受影响
 - [ ] `docs/refactor/shots/` 截图更新

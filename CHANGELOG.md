@@ -181,3 +181,19 @@
   §8 里程碑 7 标记完成。
 - `HANDOVER.md` 新增 §3.6（设置页结构与通知授权命令），更新 §6.4 与验收清单。
 - 新增截图 `settings-root.png`、`settings-appearance.png`、`settings-notifications.png`。
+
+## v0.15 — 图标按压动画（2026-10-29）
+
+**动画**
+
+- `FastBitmapDrawable` 按下缩放从 AOSP 的 1.1 放大改为 One UI 的 **0.92 缩小**，
+  松开回到 1.0；只缩放图标，文字标签不动。
+- `CLICK_FEEDBACK_DURATION` 200 → 150ms；按下用减速插值（立即响应），
+  松开用加速插值。
+- 工作区、抽屉、Dock、文件夹预览共用同一 drawable，一处改动全场景生效。
+
+**文档**
+
+- `ARCHITECTURE.md` 新增 §5.11，§7 增加图标按压验证项，§8 里程碑 8 标记部分完成。
+- `HANDOVER.md` 新增 §3.7（参数与截图方法），更新 §6.5 与验收清单。
+- 新增对比截图 `anim-icon-press.png`。
