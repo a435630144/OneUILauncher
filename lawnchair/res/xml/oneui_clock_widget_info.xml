@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One UI clock widget: 4 columns x 1 row, no configuration activity.
+  targetCell* is used on Android 12+; minWidth / minHeight cover older
+  releases and are sized for a 4x1 slot.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/oneui_clock_widget_description"
+    android:initialLayout="@layout/oneui_clock_widget"
+    android:minWidth="250dp"
+    android:minHeight="40dp"
+    android:previewLayout="@layout/oneui_clock_widget"
+    android:resizeMode="none"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One UI clock / date app widget.
+
+  Kept transparent so the wallpaper shows through, matching the One UI
+  home screen clock. TextClock ticks by itself, so the provider does not
+  need a periodic update broadcast.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="top|start"
+    android:paddingStart="8dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="4dp">
+
+    <TextClock
+        android:id="@+id/oneui_clock_widget_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-light"
+        android:format12Hour="h:mm"
+        android:format24Hour="HH:mm"
+        android:includeFontPadding="false"
+        android:letterSpacing="-0.02"
+        android:shadowColor="#59000000"
+        android:shadowDx="0"
+        android:shadowDy="2"
+        android:shadowRadius="8"
+        android:textColor="@android:color/white"
+        android:textSize="44sp" />
+
+    <TextClock
+        android:id="@+id/oneui_clock_widget_date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:fontFamily="sans-serif"
+        android:format12Hour="M月d日 EEEE"
+        android:format24Hour="M月d日 EEEE"
+        android:includeFontPadding="false"
+        android:shadowColor="#59000000"
+        android:shadowDx="0"
+        android:shadowDy="1"
+        android:shadowRadius="6"
+        android:textColor="#E6FFFFFF"
+        android:textSize="14sp" />
+
+</LinearLayout>

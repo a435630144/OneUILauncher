@@ -154,6 +154,18 @@
                 android:resource="@xml/smartspace_appwidget_info" />
         </receiver>
 
+        <receiver
+            android:name="app.lawnchair.oneui.OneUiClockWidgetProvider"
+            android:exported="true"
+            android:label="@string/oneui_clock_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/oneui_clock_widget_info" />
+        </receiver>
+
         <meta-data
             android:name="xyz.paphonb.quickstepswitcher.minSdk"
             android:value="${quickstepMinSdk}" />

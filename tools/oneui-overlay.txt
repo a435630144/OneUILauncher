@@ -17,6 +17,12 @@ lawnchair/res/xml/device_profiles.xml
 lawnchair/res/layout/launcher.xml
 lawnchair/res/layout/search_container_all_apps.xml
 lawnchair/res/layout/oneui_all_apps_section_header.xml
+lawnchair/res/layout/oneui_clock_widget.xml
+lawnchair/res/xml/oneui_clock_widget_info.xml
+lawnchair/AndroidManifest.xml
+lawnchair/src/app/lawnchair/LawnchairLauncher.kt
+lawnchair/src/app/lawnchair/oneui/OneUiClockWidgetProvider.kt
+lawnchair/src/app/lawnchair/oneui/OneUiClockWidgetController.kt
 lawnchair/res/drawable/search_input_fg.xml
 lawnchair/res/drawable/oneui_ic_more_vert.xml
 lawnchair/res/drawable/ic_launcher_home.xml
