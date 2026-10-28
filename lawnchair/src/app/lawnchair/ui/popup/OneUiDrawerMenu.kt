@@ -55,8 +55,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.lawnchair.allapps.LawnchairAlphabeticalAppsList
+import app.lawnchair.preferences.preferenceManager
 import app.lawnchair.ui.preferences.PreferenceActivity
 import app.lawnchair.ui.preferences.navigation.AppDrawer
+import app.lawnchair.ui.preferences.navigation.AppDrawerSort
 import app.lawnchair.util.navigationBarsOrDisplayCutoutPadding
 import com.android.launcher3.R
 
@@ -72,6 +75,8 @@ import com.android.launcher3.R
 fun OneUiDrawerMenuContent(onClose: () -> Unit) {
     var showSortOptions by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val prefs = preferenceManager()
+    var sortMode by remember { mutableStateOf(prefs.drawerSortMode.get()) }
 
     BackHandler(enabled = showSortOptions) {
         showSortOptions = false
@@ -85,9 +90,25 @@ fun OneUiDrawerMenuContent(onClose: () -> Unit) {
         SheetHandle()
 
         if (showSortOptions) {
-            SortOptions(onBack = { showSortOptions = false })
+            SortOptions(
+                sortMode = sortMode,
+                onBack = { showSortOptions = false },
+                onSelectMode = { mode ->
+                    if (mode != sortMode) {
+                        sortMode = mode
+                        prefs.drawerSortMode.set(mode)
+                    }
+                },
+                onEditOrder = {
+                    onClose()
+                    context.startActivity(
+                        PreferenceActivity.createIntent(context, AppDrawerSort),
+                    )
+                },
+            )
         } else {
             MainMenu(
+                sortMode = sortMode,
                 onSort = { showSortOptions = true },
                 onSettings = {
                     onClose()
@@ -117,11 +138,11 @@ private fun SheetHandle() {
 }
 
 @Composable
-private fun MainMenu(onSort: () -> Unit, onSettings: () -> Unit) {
+private fun MainMenu(sortMode: String, onSort: () -> Unit, onSettings: () -> Unit) {
     MenuRow(
         icon = Icons.Rounded.Sort,
         label = stringResource(R.string.oneui_drawer_sort),
-        value = stringResource(R.string.oneui_drawer_sort_alphabetical),
+        value = stringResource(sortModeLabelRes(sortMode)),
         onClick = onSort,
     )
     MenuRow(
@@ -178,7 +199,12 @@ private fun MenuRow(
 }
 
 @Composable
-private fun SortOptions(onBack: () -> Unit) {
+private fun SortOptions(
+    sortMode: String,
+    onBack: () -> Unit,
+    onSelectMode: (String) -> Unit,
+    onEditOrder: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -203,18 +229,33 @@ private fun SortOptions(onBack: () -> Unit) {
 
     SortOption(
         label = stringResource(R.string.oneui_drawer_sort_alphabetical),
-        selected = true,
+        selected = sortMode == LawnchairAlphabeticalAppsList.SORT_ALPHABETICAL,
         enabled = true,
-        onClick = {},
+        onClick = { onSelectMode(LawnchairAlphabeticalAppsList.SORT_ALPHABETICAL) },
     )
     SortOption(
         label = stringResource(R.string.oneui_drawer_sort_custom),
         summary = stringResource(R.string.oneui_drawer_sort_custom_summary),
-        selected = false,
-        enabled = false,
-        onClick = {},
+        selected = sortMode == LawnchairAlphabeticalAppsList.SORT_CUSTOM,
+        enabled = true,
+        onClick = { onSelectMode(LawnchairAlphabeticalAppsList.SORT_CUSTOM) },
     )
+    if (sortMode == LawnchairAlphabeticalAppsList.SORT_CUSTOM) {
+        MenuRow(
+            icon = Icons.Rounded.Sort,
+            label = stringResource(R.string.oneui_drawer_sort_edit_order),
+            onClick = onEditOrder,
+        )
+    }
     Spacer(modifier = Modifier.height(12.dp))
+}
+
+private fun sortModeLabelRes(mode: String): Int = if (
+    mode == LawnchairAlphabeticalAppsList.SORT_CUSTOM
+) {
+    R.string.oneui_drawer_sort_custom
+} else {
+    R.string.oneui_drawer_sort_alphabetical
 }
 
 @Composable

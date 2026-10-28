@@ -81,9 +81,12 @@
     <string name="oneui_search_hint">Search</string>
     <string name="oneui_drawer_menu">More options</string>
     <string name="oneui_drawer_sort">Sort</string>
+    <string name="oneui_drawer_sort_mode">Sort method</string>
     <string name="oneui_drawer_sort_alphabetical">Alphabetical order</string>
     <string name="oneui_drawer_sort_custom">Custom order</string>
-    <string name="oneui_drawer_sort_custom_summary">Coming soon</string>
+    <string name="oneui_drawer_sort_custom_summary">Drag icons to arrange apps</string>
+    <string name="oneui_drawer_sort_edit_order">Edit custom order</string>
+    <string name="oneui_drawer_sort_custom_hint">Drag the handle on the right to move an app.</string>
     <string name="oneui_drawer_sort_back">Back</string>
     <string name="oneui_drawer_section_headers">Alphabet section headers</string>
     <string name="oneui_drawer_section_headers_description">Show a letter above each group of apps. Turn off for the plain One UI grid, which only uses the right-hand index.</string>

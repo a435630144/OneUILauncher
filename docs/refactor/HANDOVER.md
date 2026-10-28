@@ -165,6 +165,46 @@ adb shell screencap -p /sdcard/drag.png
 adb shell input motionevent UP 1060 900
 ```
 
+### 3.5 抽屉自定义排序
+
+抽屉支持「字母顺序 / 自定义」两种模式，顺序在设置页拖拽编辑。
+
+1. **模式与数据**：`PreferenceManager#drawerSortMode`（`pref_drawerSortMode`，
+   默认 `alphabetical`）与 `drawerCustomOrder`（`pref_drawerCustomOrder`，
+   换行分隔的 `ComponentKey.toString()`）。
+2. **重排**：`LawnchairAlphabeticalAppsList#addAppsWithSections` 在自定义模式下调用
+   `applyCustomOrder()`；未记录的应用用 `Int.MAX_VALUE` 排到末尾并保持字母序。
+3. **渲染**：`addAppsInCustomOrder()` 不插字母标题；每行加一个空名
+   `FastScrollSectionInfo`，索引条可以拖动，但 `RecyclerViewFastScroller` 检测到
+   section 名为空会自动隐藏字母气泡。
+4. **即时刷新**：`PreferenceManager#refreshAllApps` 直接调
+   `appsView.personalAppList.updateAdapterItems()`，切模式不需要重建 Activity。
+5. **编辑器**：`AppDrawerSortPreference.kt`，复用 `ReorderablePreferenceGroup` /
+   `AppItem` / `ReorderableDragHandle`。`onOrderChange` 把整份列表写成 component key
+   字符串，所以一次拖动就会补全所有应用。
+6. **入口**：抽屉底部菜单「排序 → 编辑自定义顺序」，以及设置 → 应用抽屉 → 排序。
+
+**手动验证**（模拟器）：
+
+```powershell
+# 打开抽屉 → 三点菜单 → 排序 → 自定义
+adb shell input tap 985 2212
+adb shell input tap 540 2020
+adb shell input tap 540 2140
+# 此时抽屉应立即变为无标题网格；菜单里出现「编辑自定义顺序」
+
+# 编辑顺序后返回抽屉
+adb shell input tap 540 2160      # 编辑自定义顺序
+# 长按右侧手柄拖动，例如把第一项拖到第四项
+adb shell input keyevent KEYCODE_BACK
+```
+
+实测：把 CarMore 从第 1 位拖到第 4 位后，抽屉首行变为
+「OneUI 桌面 / Search / TMobile / CarMore」；切回字母顺序后分组标题恢复。
+
+> 拖动编辑器里的行必须**长按手柄**（`ReorderableDragHandle` 走
+> `longPressDraggableHandle`），直接滑动只会滚页面。
+
 ---
 
 ## 4. 已知问题 / 风险
@@ -174,7 +214,9 @@ adb shell input motionevent UP 1060 900
 | GitHub 网络不稳定 | 无法 push / 拉取上游 | 网络恢复后 `git push origin main`；不要尝试 unshallow 旧 fork |
 | 模拟器偶尔退出 | 验证中断 | 用 `-no-window -no-snapshot -gpu off` 启动；截图用 `adb shell screencap` + `adb pull`（PowerShell 5.1 不要用 `>` 重定向二进制）；必要时重启 AVD |
 | 时钟不能当作页面子项 | 已随第一页滚动，但长按不能选中/移除，样式固定 | 迁移到 AppWidget（见 §6.2）；已实现方案 B 的滚动同步 |
-| 抽屉三点菜单 | ~~只是入口~~ 已改为 One UI 底部菜单（排序 / 设置） | 排序子页已就位；「自定义」待实现排序模式与拖拽持久化（见 §6.3） |
+| 抽屉三点菜单 | 已改为 One UI 底部菜单（排序 / 设置），排序支持字母 / 自定义两种模式 | 排序编辑器在设置页，抽屉内暂不支持长按拖拽（见 §3.5 / §6.3） |
+| 自定义排序覆盖范围 | 只对主用户的应用生效；工作资料 / 私密空间仍走 AOSP 顺序 | 多资料场景后续再扩展，当前不影响主用户 |
+| 使用频率排序 | 尚未实现，只有字母 / 自定义 | 需要接 `UsageStatsManager` 或 `PredictionProvider` 的排序信号 |
 | 抽屉分组与 One UI 不一致 | 行内字母标题默认开启，与 One UI 7 原版不同 | 设置 → 应用抽屉 → 网格里有「字母分组标题」开关，关掉即只剩右侧索引 |
 | 索引条触摸区域 | 视觉上是 3dp 细条，实际可拖区域仍是整条 `fastscroll_width`，与 One UI 手感接近 | 如需更宽/更窄改 `res/values/dimens.xml` 的 `fastscroll_width`，别改绘制宽度 |
 | 键盘弹出时列表底部被键盘遮住 | 搜索结果区域变小 | 后续在 IME 显示时减少列表底部 padding，或滚动到结果 |
@@ -269,12 +311,10 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - **分组与索引（已完成）**：字母序下按首字母插入行内标题（§3.3），右侧细灰索引条
   + 蓝色圆形字母气泡（§3.4）；行内标题由「字母分组标题」开关控制，默认开。
   剩余可选项：One UI 8.5 的窄居中搜索胶囊，只改宽度/外边距/圆角，不动停靠逻辑。
-- **自定义排序**：参考 `legacy/app/src/main/java/com/example/oneuidesktop/` 的
-  `HomeItem` JSON；在 `lawnchair/src/app/lawnchair/allapps/` 新增 `AppSortMode`
-  （字母 / 手动 / 频率），持久化到 SharedPreferences，拖拽调序复用
-  `AllAppsGridAdapter` 的 drag 回调。排序子页已在 `OneUiDrawerMenu.kt` 就位：
-  实现 `AppSortMode` 后把「字母顺序」的单选状态和「自定义」的置灰逻辑接到真实
-  偏好，去掉「即将支持」副标题。
+- **自定义排序（已完成）**：字母 / 自定义两种模式，顺序存在
+  `pref_drawerCustomOrder`，在设置页用 `ReorderablePreferenceGroup` 拖拽编辑
+  （§3.5）。抽屉菜单可直接切模式并跳到编辑器；切换后列表即时刷新。
+  剩余：使用频率排序、抽屉内直接长按拖拽、工作资料 / 私密空间的自定义顺序。
 - 底部菜单主入口已经完成，后续只补「搜索设置」等 One UI 8.5 菜单项。
 
 ### 6.4 设置页 One UI 化
@@ -305,6 +345,9 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - [ ] 抽屉索引条：静止为 3dp 细灰轨道；拖动时滑块加粗、蓝色圆形气泡字母正确、
       列表跳到对应 section；松手后滑块恢复细条
 - [ ] 「字母分组标题」开关：关闭后无行内标题，仅保留右侧索引，重新打开后恢复
+- [ ] 自定义排序：抽屉菜单切「自定义」立即生效（无标题 / 无字母气泡）；切回字母序分组恢复
+- [ ] 排序编辑器：设置页拖动应用后返回抽屉顺序一致；杀进程 / 重启后仍保持
+- [ ] 新装应用排在自定义顺序末尾，且保持字母序
 - [ ] 搜索框隐藏开关：打开后列表不留底部空白
 - [ ] 长按桌面、拖拽图标、最近任务不受影响
 - [ ] `docs/refactor/shots/` 截图更新

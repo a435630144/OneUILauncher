@@ -15,6 +15,7 @@ import app.lawnchair.util.categorizeAppsWithSystemAndGoogle
 import com.android.launcher3.InvariantDeviceProfile.OnIDPChangeListener
 import com.android.launcher3.allapps.AllAppsStore
 import com.android.launcher3.allapps.AlphabeticalAppsList
+import com.android.launcher3.allapps.AlphabeticalAppsList.FastScrollSectionInfo
 import com.android.launcher3.allapps.BaseAllAppsAdapter.AdapterItem
 import com.android.launcher3.allapps.PrivateProfileManager
 import com.android.launcher3.allapps.WorkProfileManager
@@ -79,6 +80,7 @@ class LawnchairAlphabeticalAppsList<T>(
     override fun addAppsWithSections(appList: List<AppInfo?>?, startPosition: Int): Int {
         if (appList.isNullOrEmpty()) return startPosition
         val drawerListDefault = prefs.drawerList.get()
+        val customSort = prefs.drawerSortMode.get() == SORT_CUSTOM
         filteredList.clear()
         var position = startPosition
 
@@ -116,16 +118,55 @@ class LawnchairAlphabeticalAppsList<T>(
                 }
                 position++
             }
-            val remainingApps = appList.filterNotNull().filterNot { app ->
+            val orderedApps = if (customSort) applyCustomOrder(appList.filterNotNull()) else appList
+            val remainingApps = orderedApps.filterNotNull().filterNot { app ->
                 filteredList.contains(app) && prefs.folderApps.get()
             }
-            position = if (prefs.drawerSectionHeaders.get()) {
-                addAppsWithAlphabetSections(remainingApps, position)
-            } else {
-                super.addAppsWithSections(remainingApps, position)
+            position = when {
+                customSort -> addAppsInCustomOrder(remainingApps, position)
+                prefs.drawerSectionHeaders.get() -> addAppsWithAlphabetSections(remainingApps, position)
+                else -> super.addAppsWithSections(remainingApps, position)
             }
         }
 
+        return position
+    }
+
+    /**
+     * Applies the user's custom order, keeping apps that are not in the saved
+     * list (new installs) at the end in alphabetical order.
+     */
+    private fun applyCustomOrder(appList: List<AppInfo>): List<AppInfo> {
+        val order = prefs.drawerCustomOrder.get()
+        if (order.isBlank()) return appList
+
+        val index = HashMap<String, Int>()
+        order.lineSequence().forEachIndexed { i, key ->
+            if (key.isNotBlank()) index.putIfAbsent(key, i)
+        }
+        if (index.isEmpty()) return appList
+
+        return appList.sortedBy { app ->
+            index[app.toComponentKey().toString()] ?: Int.MAX_VALUE
+        }
+    }
+
+    /**
+     * Adds apps in custom order as one continuous grid: no alphabet headers and
+     * no letter sections. One empty fast-scroll section per row keeps the index
+     * bar usable (it scrolls proportionally) while hiding the letter bubble.
+     */
+    private fun addAppsInCustomOrder(appList: List<AppInfo>, startPosition: Int): Int {
+        val columns = context.deviceProfile.numShownAllAppsColumns.coerceAtLeast(1)
+        var position = startPosition
+
+        appList.forEachIndexed { index, app ->
+            if (index % columns == 0) {
+                fastScrollerSections.add(FastScrollSectionInfo("", position))
+            }
+            mAdapterItems.add(AdapterItem.asApp(app))
+            position++
+        }
         return position
     }
 
@@ -160,5 +201,10 @@ class LawnchairAlphabeticalAppsList<T>(
 
     override fun onIdpChanged(modelPropertiesChanged: Boolean) {
         onAppsUpdated()
+    }
+
+    companion object {
+        const val SORT_ALPHABETICAL = "alphabetical"
+        const val SORT_CUSTOM = "custom"
     }
 }

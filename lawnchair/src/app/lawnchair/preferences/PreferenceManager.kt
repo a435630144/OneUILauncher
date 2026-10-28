@@ -42,6 +42,16 @@ class PreferenceManager private constructor(private val context: Context) :
         Unit
     }
 
+    /**
+     * Refreshes the app drawer in place after a sorting preference changes.
+     * Cheaper than [recreate] and keeps the drawer open while the user picks a
+     * sort mode from the overflow sheet.
+     */
+    private val refreshAllApps: () -> Unit = {
+        LawnchairLauncher.instance?.appsView?.personalAppList?.updateAdapterItems()
+        Unit
+    }
+
     val iconPackPackage = StringPref("pref_iconPackPackage", "", reloadIcons)
     val themedIconPackPackage = StringPref("pref_themedIconPackPackage", "", recreate)
     val allowRotation = BoolPref("pref_allowRotation", false)
@@ -124,6 +134,12 @@ class PreferenceManager private constructor(private val context: Context) :
     val drawerList = BoolPref("pref_drawerList", true, recreate)
     val folderApps = BoolPref("pref_hideFolderApps", true, reloadGrid)
     val drawerSectionHeaders = BoolPref("pref_drawerSectionHeaders", true, recreate)
+
+    /** "alphabetical" (default) or "custom"; see LawnchairAlphabeticalAppsList. */
+    val drawerSortMode = StringPref("pref_drawerSortMode", "alphabetical", refreshAllApps)
+
+    /** Newline separated ComponentKey strings, only used in custom sort mode. */
+    val drawerCustomOrder = StringPref("pref_drawerCustomOrder", "", refreshAllApps)
 
     val recentsActionScreenshot = BoolPref("pref_recentsActionScreenshot", !isOnePlusStock)
     val recentsActionShare = BoolPref("pref_recentsActionShare", isOnePlusStock)

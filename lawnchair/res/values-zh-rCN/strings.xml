@@ -68,9 +68,12 @@
     <string name="oneui_search_hint">搜索</string>
     <string name="oneui_drawer_menu">更多选项</string>
     <string name="oneui_drawer_sort">排序</string>
+    <string name="oneui_drawer_sort_mode">排序方式</string>
     <string name="oneui_drawer_sort_alphabetical">字母顺序</string>
     <string name="oneui_drawer_sort_custom">自定义</string>
-    <string name="oneui_drawer_sort_custom_summary">即将支持</string>
+    <string name="oneui_drawer_sort_custom_summary">拖动图标调整应用顺序</string>
+    <string name="oneui_drawer_sort_edit_order">编辑自定义顺序</string>
+    <string name="oneui_drawer_sort_custom_hint">拖动右侧手柄可移动应用。</string>
     <string name="oneui_drawer_sort_back">返回</string>
     <string name="oneui_drawer_section_headers">字母分组标题</string>
     <string name="oneui_drawer_section_headers_description">在每个字母分组上方显示标题。关闭后与 One UI 原版一致，仅保留右侧索引条。</string>

@@ -131,3 +131,30 @@
 - `ARCHITECTURE.md` 新增 §5.8 索引条实现，§7 增加索引条/开关验证项与新截图，§8 里程碑 4 标记完成。
 - `HANDOVER.md` 新增 §3.4（含 `input motionevent` 抓气泡的方法）、更新已知问题与验收清单。
 - 新增截图 `docs/refactor/shots/drawer-index.png`、`drawer-index-drag.png`。
+
+## v0.13 — 抽屉自定义排序（2026-10-29）
+
+**应用抽屉**
+
+- 新增两种排序模式：`alphabetical`（默认）和 `custom`，分别存在
+  `pref_drawerSortMode` / `pref_drawerCustomOrder`。
+- 抽屉菜单「排序」变成可用的单选；自定义模式下多出「编辑自定义顺序」入口，
+  设置 → 应用抽屉 → 排序 也可进入。
+- `LawnchairAlphabeticalAppsList` 在自定义模式下按保存的 component key 重排：
+  - 不插字母标题，应用连续排列；
+  - 每行合成空名 `FastScrollSectionInfo`，索引条可拖动但字母气泡自动隐藏；
+  - 未记录的应用（新装）排在末尾并保持字母序。
+- 新增 `AppDrawerSortPreference`：`ListPreference` 选模式 +
+  `ReorderablePreferenceGroup` 拖拽列表（复用 `AppItem` / `ReorderableDragHandle`），
+  松手即写入完整顺序。
+- 排序偏好变化时通过 `PreferenceManager#refreshAllApps` 刷新
+  `personalAppList.updateAdapterItems()`，不重建 Activity；抽屉打开时切模式立即生效。
+- 实测：CarMore 从第 1 位拖到第 4 位后，抽屉首行变为
+  「OneUI 桌面 / Search / TMobile / CarMore」；切回字母顺序后分组恢复。
+
+**文档**
+
+- `ARCHITECTURE.md` 新增 §5.9，§7 增加自定义排序 / 编辑器 / 新装应用验证项与截图，
+  §8 里程碑 6 标记完成。
+- `HANDOVER.md` 新增 §3.5（模式、数据格式、渲染与手动验证），更新已知问题与验收清单。
+- 新增截图 `drawer-sort-menu.png`、`drawer-sort-custom.png`、`drawer-sort-editor.png`。

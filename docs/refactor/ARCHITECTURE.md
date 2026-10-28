@@ -234,6 +234,29 @@ AOSP 的 `RecyclerViewFastScroller` 画的是 6–8dp 的主题色长条，拖�
 （换 View 类型）、`AppDrawerPreferences.kt`（开关）。`AllAppsRecyclerView` 的
 `scrollToPositionAtProgress` 和 `AllAppsFastScrollHelper` 没有改动。
 
+### 5.9 抽屉自定义排序
+
+抽屉支持两种排序模式：`alphabetical`（默认）和 `custom`。模式与顺序分别存在
+`pref_drawerSortMode` 和 `pref_drawerCustomOrder`（换行分隔的 `ComponentKey.toString()`）。
+
+| 层 | 改动 |
+| --- | --- |
+| 排序模式 | `PreferenceManager#drawerSortMode`（`StringPref`，默认 `"alphabetical"`）；模式切换时通过主监听器直接刷新抽屉，不重建 Activity |
+| 重排 | `LawnchairAlphabeticalAppsList#addAppsWithSections` 在自定义模式下先按 `drawerCustomOrder` 重排；未记录的应用（新装 / 恢复）保持字母序排到末尾 |
+| 渲染 | 自定义模式走 `addAppsInCustomOrder()`：不插字母标题，应用连续排列；每行合成一个空名 `FastScrollSectionInfo`，索引条仍可拖动，但 `animatePopupVisibility(!TextUtils.isEmpty(...))` 会自动隐藏字母气泡 |
+| 编辑入口 | 抽屉底部菜单「排序 → 编辑自定义顺序」，或设置 → 应用抽屉 → 排序 |
+| 编辑器 | `AppDrawerSortPreference.kt`：`ListPreference` 选模式，自定义模式下显示 `ReorderablePreferenceGroup` + `AppItem` + `ReorderableDragHandle`，松手时把整份列表写回偏好 |
+| 刷新 | `PreferenceManager#refreshAllApps` 调用 `personalAppList.updateAdapterItems()`；抽屉打开时切模式立即生效，设置页拖完返回也已是新顺序 |
+
+**为什么在设置页拖拽而不是抽屉内拖拽**：AOSP `AllAppsGridAdapter` 没有行拖拽支持，
+`AlphabeticalAppsList` 的 adapter item 也是每次 `updateAdapterItems()` 重建的；
+在抽屉里接 `ItemTouchHelper` 需要同时处理搜索、文件夹、工作资料和分页，成本远高于
+复用设置页已有的 `ReorderablePreferenceGroup`。抽屉只负责呈现结果，编辑在设置页完成。
+
+**数据顺序**：自定义顺序保存的是完整应用列表的 component key。应用被卸载后 key 留在
+字符串里但不会匹配；新装应用没有 key，`sortedBy` 时拿到 `Int.MAX_VALUE`，因此排在
+末尾并保持字母序，直到用户再次拖动。
+
 ## 6. 构建与运行
 
 ```powershell
@@ -282,6 +305,9 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 | 抽屉分组 | 字母序下按 B/C/D/O/R/S/T/W/X 分组；首字母不被状态栏或列表裁剪；文件夹、搜索结果、长按菜单、键盘避让不受影响 |
 | 抽屉索引条 | 静止 3dp 半透明轨道；拖动时滑块 3dp→6dp、蓝色 52dp 圆形气泡显示当前字母；列表跳到对应 section（B→D→W 已验） |
 | 分组标题开关 | 关闭后无行内标题、仅保留右侧索引；重新打开恢复分组 |
+| 自定义排序 | 菜单切「自定义」后抽屉立即变连续网格（无字母标题、无字母气泡），索引条仍可拖动；切回字母序分组恢复 |
+| 排序编辑器 | 设置 → 应用抽屉 → 排序：显示当前模式与拖拽列表；把 CarMore 从第 1 位拖到第 4 位后返回抽屉，顺序一致且重启后保持 |
+| 新装应用 | 代码路径为「缺失 key → `Int.MAX_VALUE` → 末尾字母序」，尚未用真实新装应用实测 |
 | 长按桌面 | 「背景 / 小部件 / 启动器设置」菜单正常，时钟层未阻塞手势 |
 | 最近任务 | Quickstep 正常，时钟不会出现在任务快照里 |
 
@@ -289,7 +315,9 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 `drawer-sections.png`（抽屉字母分组）、`drawer-index.png`（索引条静止状态）、
 `drawer-index-drag.png`（拖动字母气泡）、`drawer-keyboard.png`（抽屉 + 键盘）、
 `drawer-menu.png`（抽屉底部菜单）、`drawer-sort.png`（排序子页）、
-`long-press.png`（长按菜单）、`recents.png`（最近任务）。
+`drawer-sort-menu.png`（自定义排序菜单）、`drawer-sort-custom.png`（自定义顺序抽屉）、
+`drawer-sort-editor.png`（拖拽排序编辑器）、`long-press.png`（长按菜单）、
+`recents.png`（最近任务）。
 
 ## 8. 下一步里程碑
 
@@ -303,10 +331,9 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
    `<appwidget>` 默认布局），让它可移除、可换样式（One UI 有 4 种时钟样式）。
    随页面滚动已由 `OneUiClockView` 完成；AppWidget 绑定仍受 `BIND_APPWIDGET`
    签名权限限制（见 HANDOVER §6.2），需要先接绑定授权流程。
-6. **自定义排序**：Lawnchair 15 只有字母序（`LawnchairAlphabeticalAppsList`），
-   需要新增排序模式（字母 / 手动 / 使用频率）和拖拽调序，
-   数据结构对齐现有 Compose 版 `HomeItem` 的 JSON 持久化。排序子页已就位，
-   当前「自定义」置灰标注「即将支持」。
+6. ~~**自定义排序**：模式（字母 / 自定义）+ 设置页拖拽调序 + SharedPreferences 持久化~~
+   ✅ 已完成（§5.9）。剩余：按使用频率排序（需要接 `UsageStatsManager` 或
+   Lawnchair 的 `PredictionProvider`），以及抽屉内直接长按拖拽。
 7. **设置页收口**：只保留桌面相关项，其余隐藏；二级页改用 One UI 分组卡片。
 8. **动画复刻**：抽屉开合（背景模糊 + 图标错落）、图标按压缩放、页面切换、
    长按菜单弹出/收起，统一用 One UI 的 `FastOutSlowIn` / 弹簧参数。

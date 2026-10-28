@@ -53,6 +53,7 @@ import app.lawnchair.ui.preferences.components.layout.ExpandAndShrink
 import app.lawnchair.ui.preferences.components.layout.PreferenceGroup
 import app.lawnchair.ui.preferences.components.layout.PreferenceLayout
 import app.lawnchair.ui.preferences.navigation.AppDrawerHiddenApps
+import app.lawnchair.ui.preferences.navigation.AppDrawerSort
 import com.android.launcher3.R
 
 object AppDrawerRoutes {
@@ -79,6 +80,10 @@ fun AppDrawerPreferences(
             AppDrawerFolderPreferenceItem()
         }
         PreferenceGroup(heading = stringResource(id = R.string.general_label)) {
+            NavigationActionPreference(
+                label = stringResource(id = R.string.oneui_drawer_sort),
+                destination = AppDrawerSort,
+            )
             val hiddenApps = prefs2.hiddenApps.getAdapter().state.value
             NavigationActionPreference(
                 label = stringResource(id = R.string.hidden_apps_label),
