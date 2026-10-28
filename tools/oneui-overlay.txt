@@ -47,5 +47,6 @@ res/layout/all_apps_fast_scroller.xml
 res/values/styles.xml
 src/com/android/launcher3/allapps/ActivityAllAppsContainerView.java
 src/com/android/launcher3/allapps/AllAppsTransitionController.java
+src/com/android/launcher3/popup/ArrowPopup.java
 src/com/android/launcher3/allapps/FloatingHeaderView.java
 tools/fetch-sesl.ps1

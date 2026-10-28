@@ -239,3 +239,18 @@
 - `ARCHITECTURE.md` §5.10 增加二级页整理，§7 增加验证与截图。
 - `HANDOVER.md` §3.6 / §6.4 / 验收清单同步。
 - 新增截图 `settings-home.png`、`settings-app-drawer.png`，更新 `settings-root.png`。
+
+## v0.18 — 长按菜单弹性展开（2026-10-29）
+
+**动画**
+
+- `ArrowPopup` 的 Material You 展开从 `0.5 → 1.02` 改为 `0.86 → 1.015 → 1.0`，
+  展开 240ms、回弹 120ms，淡入 90ms / 子项 110ms。
+- 收起 233 → 180ms，缩到 `0.9`；长按菜单、文件夹、快捷方式、小组件弹窗共用。
+- 只改参数，不改 `OptionsPopupView` 结构。
+
+**文档**
+
+- `ARCHITECTURE.md` 新增 §5.13，更新 §7 与 §8 里程碑。
+- `HANDOVER.md` 新增 §3.9、验收项与提交表。
+- `tools/oneui-overlay.txt` 增加 `ArrowPopup.java`。
