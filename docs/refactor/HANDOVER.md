@@ -415,6 +415,8 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 | 提交 | 内容 |
 | --- | --- |
+| `7320a7f` | 设置：One UI 分组卡片与独立通知页 |
+| `b66d459` | 文档：交接文档记录自定义排序提交 |
 | `1e45e44` | 抽屉：自定义排序与拖拽编辑器 |
 | `f041c8a` | 文档：交接文档记录索引条提交 |
 | `88d18ac` | 抽屉：One UI 右侧字母索引条 |
