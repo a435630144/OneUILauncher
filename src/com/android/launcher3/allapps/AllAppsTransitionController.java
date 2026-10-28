@@ -86,6 +86,11 @@ public class AllAppsTransitionController
     public static final float INTERP_COEFF = 1.7f;
     public static final int REVERT_SWIPE_ALL_APPS_TO_HOME_ANIMATION_DURATION_MS = 200;
 
+    // One UI: app icons settle into place with a slight bottom-to-top stagger
+    // while the drawer slides in, instead of the whole grid moving rigidly.
+    private static final float ICON_STAGGER_MAX_DELAY = 0.3f;
+    private static final float ICON_STAGGER_TRANSLATION_DP = 12f;
+
     private static final float NAV_BAR_COLOR_FORCE_UPDATE_THRESHOLD = 0.1f;
     private static final float SWIPE_DRAG_COMMIT_THRESHOLD = 1
             - AllAppsSwipeController.ALL_APPS_STATE_TRANSITION_MANUAL;
@@ -250,6 +255,37 @@ public class AllAppsTransitionController
                 && mLauncher.getAppsView().getNavBarScrimHeight() > 0;
         mLauncher.getSystemUiController().updateUiState(
                 UI_STATE_ALL_APPS, hasScrim ? mNavScrimFlag : 0);
+        applyIconStagger(progress);
+    }
+
+    /**
+     * One UI-style staggered reveal for the app grid. Rows at the bottom of the
+     * list (which enter the viewport first while sliding up) lead, rows at the
+     * top trail by up to {@link #ICON_STAGGER_MAX_DELAY}.
+     */
+    private void applyIconStagger(float progress) {
+        AllAppsRecyclerView recyclerView = mAppsView.getActiveRecyclerView();
+        if (recyclerView == null || recyclerView.getChildCount() == 0) {
+            return;
+        }
+        int height = recyclerView.getHeight();
+        if (height == 0) {
+            return;
+        }
+        float translation = ICON_STAGGER_TRANSLATION_DP
+                * mLauncher.getResources().getDisplayMetrics().density;
+        // mProgress is 1 on the workspace and 0 with the drawer open.
+        float openProgress = 1f - progress;
+        for (int i = 0; i < recyclerView.getChildCount(); i++) {
+            View child = recyclerView.getChildAt(i);
+            float rowFraction = Math.max(0f, Math.min(1f, child.getTop() / (float) height));
+            // The top of the panel enters the screen first, so it leads the stagger.
+            float delay = rowFraction * ICON_STAGGER_MAX_DELAY;
+            float localProgress = Math.max(0f, Math.min(1f,
+                    (openProgress - delay) / (1f - delay)));
+            child.setAlpha(1f);
+            child.setTranslationY((1f - localProgress) * translation);
+        }
     }
 
     public float getProgress() {
