@@ -34,21 +34,15 @@ import app.lawnchair.ui.preferences.LocalIsExpandedScreen
 import app.lawnchair.ui.preferences.LocalPreferenceInteractor
 import app.lawnchair.ui.preferences.components.FontPreference
 import app.lawnchair.ui.preferences.components.NavigationActionPreference
-import app.lawnchair.ui.preferences.components.NotificationDotsPreference
 import app.lawnchair.ui.preferences.components.ThemePreference
-import app.lawnchair.ui.preferences.components.colorpreference.ColorContrastWarning
 import app.lawnchair.ui.preferences.components.colorpreference.ColorPreference
 import app.lawnchair.ui.preferences.components.controls.ListPreference
 import app.lawnchair.ui.preferences.components.controls.ListPreferenceEntry
 import app.lawnchair.ui.preferences.components.controls.SliderPreference
 import app.lawnchair.ui.preferences.components.controls.SwitchPreference
-import app.lawnchair.ui.preferences.components.controls.WarningPreference
-import app.lawnchair.ui.preferences.components.layout.DividerColumn
 import app.lawnchair.ui.preferences.components.layout.ExpandAndShrink
 import app.lawnchair.ui.preferences.components.layout.PreferenceGroup
 import app.lawnchair.ui.preferences.components.layout.PreferenceLayout
-import app.lawnchair.ui.preferences.components.notificationDotsEnabled
-import app.lawnchair.ui.preferences.components.notificationServiceEnabled
 import app.lawnchair.ui.preferences.navigation.GeneralIconPack
 import app.lawnchair.ui.preferences.navigation.GeneralIconShape
 import com.android.launcher3.R
@@ -87,7 +81,7 @@ fun GeneralPreferences() {
 
     PreferenceLayout(
         backArrowVisible = !LocalIsExpandedScreen.current,
-        label = stringResource(id = R.string.general_label),
+        label = stringResource(id = R.string.oneui_settings_appearance),
     ) {
         PreferenceGroup {
             SwitchPreference(
@@ -179,29 +173,6 @@ fun GeneralPreferences() {
                 ColorStylePreference(prefs2.colorStyle.getAdapter())
             }
         }
-
-        PreferenceGroup(heading = stringResource(id = R.string.notification_dots)) {
-            val enabled by remember { notificationDotsEnabled(context) }.collectAsStateWithLifecycle(initialValue = false)
-            val serviceEnabled = notificationServiceEnabled()
-            NotificationDotsPreference(enabled = enabled, serviceEnabled = serviceEnabled)
-            if (enabled && serviceEnabled) {
-                val showNotificationCountAdapter = prefs2.showNotificationCount.getAdapter()
-                ColorPreference(preference = prefs2.notificationDotColor)
-                SwitchPreference(
-                    adapter = showNotificationCountAdapter,
-                    label = stringResource(id = R.string.show_notification_count),
-                )
-                ExpandAndShrink(visible = showNotificationCountAdapter.state.value) {
-                    DividerColumn {
-                        ColorPreference(preference = prefs2.notificationDotTextColor)
-                        NotificationDotColorContrastWarnings(
-                            dotColor = prefs2.notificationDotColor.asState().value,
-                            dotTextColor = prefs2.notificationDotTextColor.asState().value,
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -225,34 +196,4 @@ private fun ColorStylePreference(
         label = stringResource(id = R.string.color_style_label),
         modifier = modifier,
     )
-}
-
-@Composable
-private fun NotificationDotColorContrastWarnings(
-    dotColor: ColorOption,
-    dotTextColor: ColorOption,
-    modifier: Modifier = Modifier,
-) {
-    val dotColorIsDynamic = when (dotColor) {
-        is ColorOption.SystemAccent,
-        is ColorOption.WallpaperPrimary,
-        is ColorOption.Default,
-        -> true
-
-        else -> false
-    }
-
-    if (dotColorIsDynamic && dotTextColor !is ColorOption.Default) {
-        WarningPreference(
-            text = stringResource(id = R.string.notification_dots_color_contrast_warning_sometimes),
-            modifier = modifier,
-        )
-    } else {
-        ColorContrastWarning(
-            foregroundColor = dotTextColor,
-            backgroundColor = dotColor,
-            text = stringResource(id = R.string.notification_dots_color_contrast_warning_always),
-            modifier = modifier,
-        )
-    }
 }

@@ -146,7 +146,11 @@
     -->
     <string name="settings">设置</string>
     <string name="general_label">通用</string>
-    <string name="general_description">颜色、图标包与通知圆点</string>
+    <string name="general_description">图标、颜色与字体</string>
+    <string name="oneui_settings_appearance">图标与风格</string>
+    <string name="oneui_settings_notifications">通知</string>
+    <string name="oneui_settings_section_look">外观</string>
+    <string name="oneui_settings_section_controls">交互</string>
     <string name="home_screen_label">主屏幕</string>
     <string name="home_screen_description">订阅源、网格、图标</string>
     <string name="home_screen_actions">Home screen actions</string>

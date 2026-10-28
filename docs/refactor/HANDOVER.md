@@ -207,6 +207,30 @@ adb shell input keyevent KEYCODE_BACK
 > 拖动编辑器里的行必须**长按手柄**（`ReorderableDragHandle` 走
 > `longPressDraggableHandle`），直接滑动只会滚页面。
 
+### 3.6 设置页结构
+
+设置首页按 One UI 拆成四张卡片，行内只有标题、说明和右箭头：
+
+| 卡片 | 行 |
+| --- | --- |
+| 布局 | 主屏幕 / 应用抽屉 / Dock 栏 / 文件夹 |
+| 外观 | 图标与风格 / 资讯一览 / 搜索栏 / 通知 |
+| 交互 | 手势 / 最近任务 |
+| 关于 | 关于 |
+
+- **通知**从「通用」拆成独立页 `NotificationsPreferences.kt`，路由 `Notifications`；
+  内容仍是 Lawnchair 的通知圆点开关、颜色、数量、文字颜色与对比度警告。
+- **图标与风格** = 原 `GeneralPreferences`（旋转 / 字体 / 图标 / 颜色），
+  标题改用 `oneui_settings_appearance`。
+- 首页不再显示 Lawnchair 公告；备份、恢复、实验特性入口从 UI 移除（路由保留）。
+  只有打开「调试菜单」偏好时才在标题栏出现扳手图标。
+- 通知使用权未授权时，通知页只显示「需要通知使用权来读取内容」的警告。
+  模拟器可用以下命令授权后查看完整控件：
+
+```powershell
+adb shell cmd notification allow_listener com.oneui.desktop/com.android.launcher3.notification.NotificationListener
+```
+
 ---
 
 ## 4. 已知问题 / 风险
@@ -321,9 +345,14 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 ### 6.4 设置页 One UI 化
 
-- `lawnchair/src/app/lawnchair/ui/preferences/` 用分组卡片重排；
-- 隐藏与桌面无关的 Lawnchair 项（更新、备份、实验特性等）；
-- 一级页只保留：主屏、应用抽屉、图标、手势、通知、关于。
+- ~~`lawnchair/src/app/lawnchair/ui/preferences/` 用分组卡片重排~~ ✅ 设置首页已拆成
+  布局 / 外观 / 交互 / 关于四张卡片（§3.6、ARCHITECTURE §5.10）。
+- ~~隐藏与桌面无关的 Lawnchair 项（更新、备份、实验特性等）~~ ✅ 首页公告、备份 / 恢复、
+  实验特性入口已从 UI 移除；调试菜单仅在偏好打开时显示。
+- ~~一级页只保留：主屏、应用抽屉、图标、手势、通知、关于~~ ✅ 已覆盖；
+  「通知」已从通用页拆成独立页面。
+- 剩余：二级页（主屏幕 / 应用抽屉 / 手势 / 关于）逐页清理说明文案与卡片顺序；
+  「关于」里的致谢 / 许可页面还是 Lawnchair 原样式。
 
 ### 6.5 动画复刻
 
@@ -350,6 +379,9 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - [ ] 自定义排序：抽屉菜单切「自定义」立即生效（无标题 / 无字母气泡）；切回字母序分组恢复
 - [ ] 排序编辑器：设置页拖动应用后返回抽屉顺序一致；杀进程 / 重启后仍保持
 - [ ] 新装应用排在自定义顺序末尾，且保持字母序
+- [ ] 设置首页：布局 / 外观 / 交互 / 关于四张卡片，无公告、无备份 / 实验入口
+- [ ] 设置 → 通知：授权通知使用权后显示开关、颜色、数量；未授权时只有警告
+- [ ] 设置 → 图标与风格：标题正确，字体 / 图标 / 颜色正常，无通知圆点
 - [ ] 搜索框隐藏开关：打开后列表不留底部空白
 - [ ] 长按桌面、拖拽图标、最近任务不受影响
 - [ ] `docs/refactor/shots/` 截图更新

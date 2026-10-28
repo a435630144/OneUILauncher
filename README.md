@@ -18,6 +18,7 @@
 - 抽屉右侧 One UI 索引条：3dp 细灰轨道、拖动加粗滑块、蓝色圆形字母气泡；
   行内分组标题可在设置里关闭，只保留索引
 - 自定义排序：设置 → 应用抽屉 → 排序，拖拽应用调整顺序；抽屉里切换模式即时生效
+- 设置首页 One UI 卡片分组（布局 / 外观 / 交互 / 关于），通知独立成页
 - 应用抽屉、文件夹、小组件、通知角标、最近任务沿用 Lawnchair
 
 ![首屏](docs/refactor/shots/home.png)
@@ -26,6 +27,7 @@
 ![抽屉索引条](docs/refactor/shots/drawer-index-drag.png)
 ![抽屉底部菜单](docs/refactor/shots/drawer-menu.png)
 ![自定义排序编辑器](docs/refactor/shots/drawer-sort-editor.png)
+![设置首页](docs/refactor/shots/settings-root.png)
 
 更多截图与验证记录见 [docs/refactor/ARCHITECTURE.md](docs/refactor/ARCHITECTURE.md)；
 接手开发请先读 [docs/refactor/HANDOVER.md](docs/refactor/HANDOVER.md)。

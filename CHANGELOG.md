@@ -159,3 +159,25 @@
 - `HANDOVER.md` 新增 §3.5（模式、数据格式、渲染与手动验证），更新已知问题与验收清单。
 - 新增截图 `drawer-sort-menu.png`、`drawer-sort-custom.png`、`drawer-sort-editor.png`、
   `drawer-sort-mode.png`。
+
+## v0.14 — 设置页 One UI 化（2026-10-29）
+
+**设置**
+
+- 设置首页改成四张 One UI 分组卡片：布局 / 外观 / 交互 / 关于；
+  行内只有标题、说明和箭头，去掉前置图标与 Lawnchair 公告。
+- 布局：主屏幕、应用抽屉、Dock 栏、文件夹；外观：图标与风格、资讯一览、
+  搜索栏、通知；交互：手势、最近任务；关于单独一张卡片。
+- 通知圆点从「通用」拆成独立页面 `NotificationsPreferences`，新增 `Notifications`
+  路由；授予通知使用权后显示开关、圆点颜色、数量与文字颜色。
+- `GeneralPreferences` 改名为「图标与风格」，只保留旋转、字体、图标、颜色。
+- 移除首页的备份 / 恢复 / 实验特性 / 重启入口；调试菜单仅在打开对应偏好时显示。
+- 新增文案 `oneui_settings_appearance` / `oneui_settings_notifications` /
+  `oneui_settings_section_look` / `oneui_settings_section_controls`。
+
+**文档**
+
+- `ARCHITECTURE.md` 新增 §5.10，§7 增加设置首页 / 图标与风格 / 通知页验证项与截图，
+  §8 里程碑 7 标记完成。
+- `HANDOVER.md` 新增 §3.6（设置页结构与通知授权命令），更新 §6.4 与验收清单。
+- 新增截图 `settings-root.png`、`settings-appearance.png`、`settings-notifications.png`。

@@ -32,6 +32,9 @@ lawnchair/src/app/lawnchair/ui/popup/OneUiDrawerMenu.kt
 lawnchair/src/app/lawnchair/preferences/PreferenceManager.kt
 lawnchair/src/app/lawnchair/ui/preferences/destinations/AppDrawerPreferences.kt
 lawnchair/src/app/lawnchair/ui/preferences/destinations/AppDrawerSortPreference.kt
+lawnchair/src/app/lawnchair/ui/preferences/destinations/GeneralPreferences.kt
+lawnchair/src/app/lawnchair/ui/preferences/destinations/NotificationsPreferences.kt
+lawnchair/src/app/lawnchair/ui/preferences/destinations/PreferencesDashboard.kt
 lawnchair/src/app/lawnchair/ui/preferences/navigation/PreferenceRoutes.kt
 lawnchair/src/app/lawnchair/ui/preferences/navigation/PreferenceNavigation.kt
 lawnchair/src/app/lawnchair/ui/theme/Shape.kt

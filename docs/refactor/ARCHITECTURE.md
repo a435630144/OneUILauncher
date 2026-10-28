@@ -257,6 +257,34 @@ AOSP 的 `RecyclerViewFastScroller` 画的是 6–8dp 的主题色长条，拖�
 字符串里但不会匹配；新装应用没有 key，`sortedBy` 时拿到 `Int.MAX_VALUE`，因此排在
 末尾并保持字母序，直到用户再次拖动。
 
+### 5.10 设置页 One UI 化
+
+设置首页原来是 Lawnchair 的一张「大卡片 + 每行带图标」，且整页带公告、备份、实验特性等
+与桌面无关的入口。One UI 化后分成四张按用途分组的卡片，行内只有标题 + 说明 + 箭头，
+不再有前置图标：
+
+| 分组 | 行 |
+| --- | --- |
+| 布局 | 主屏幕、应用抽屉、Dock 栏、文件夹 |
+| 外观 | 图标与风格、资讯一览、搜索栏、通知 |
+| 交互 | 手势、最近任务（Quickstep，仅启用时） |
+| （无标题） | 关于 |
+
+具体改动：
+
+1. **`PreferencesDashboard.kt`**：用 `PreferenceGroup(heading = …)` +
+   `NavigationActionPreference` 重写，去掉 `PreferenceCategoryGroup` 与
+   `PreferencesOverflowMenu`；公告 `AnnouncementPreference` 不再显示，备份 / 恢复 /
+   实验特性入口从 UI 移除（路由仍保留，供调试或以后迁移到「关于」）。
+2. **通知独立成页**：`NotificationsPreferences.kt` 从 `GeneralPreferences` 抽出
+   「通知圆点」分组（开关、圆点颜色、数量、文字颜色与对比度警告），新增
+   `Notifications` 顶层路由；`GeneralPreferences` 改名为「图标与风格」，
+   只保留旋转、字体、图标、颜色。
+3. **文案**：新增 `oneui_settings_appearance`、`oneui_settings_notifications`、
+   `oneui_settings_section_look`、`oneui_settings_section_controls`；`general_description`
+   改为「图标、颜色与字体」（通知已移出）。
+4. **调试入口**：只有打开「调试菜单」偏好时才在标题栏显示扳手图标，普通用户看不到。
+
 ## 6. 构建与运行
 
 ```powershell
@@ -308,6 +336,9 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 | 自定义排序 | 菜单切「自定义」后抽屉立即变连续网格（无字母标题、无字母气泡），索引条仍可拖动；切回字母序分组恢复 |
 | 排序编辑器 | 设置 → 应用抽屉 → 排序：显示当前模式与拖拽列表；把 CarMore 从第 1 位拖到第 4 位后返回抽屉，顺序一致且重启后保持 |
 | 新装应用 | 代码路径为「缺失 key → `Int.MAX_VALUE` → 末尾字母序」，尚未用真实新装应用实测 |
+| 设置首页 | 四张卡片：布局 / 外观 / 交互 / 关于；行内无前置图标，公告、备份、实验特性入口不再出现 |
+| 图标与风格 | 设置 → 图标与风格：标题正确，只保留旋转、字体、图标、颜色；不再包含通知圆点 |
+| 通知页 | 设置 → 外观 → 通知：独立页显示通知圆点开关、圆点颜色、数量开关；授予通知使用权后控件正常出现 |
 | 长按桌面 | 「背景 / 小部件 / 启动器设置」菜单正常，时钟层未阻塞手势 |
 | 最近任务 | Quickstep 正常，时钟不会出现在任务快照里 |
 
@@ -317,7 +348,9 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 `drawer-menu.png`（抽屉底部菜单）、`drawer-sort.png`（排序子页）、
 `drawer-sort-menu.png`（自定义排序菜单）、`drawer-sort-custom.png`（自定义顺序抽屉）、
 `drawer-sort-editor.png`（拖拽排序编辑器）、`drawer-sort-mode.png`（排序方式弹窗）、
-`long-press.png`（长按菜单）、`recents.png`（最近任务）。
+`settings-root.png`（设置首页）、`settings-appearance.png`（图标与风格）、
+`settings-notifications.png`（通知页）、`long-press.png`（长按菜单）、
+`recents.png`（最近任务）。
 
 ## 8. 下一步里程碑
 
@@ -334,7 +367,8 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 6. ~~**自定义排序**：模式（字母 / 自定义）+ 设置页拖拽调序 + SharedPreferences 持久化~~
    ✅ 已完成（§5.9）。剩余：按使用频率排序（需要接 `UsageStatsManager` 或
    Lawnchair 的 `PredictionProvider`），以及抽屉内直接长按拖拽。
-7. **设置页收口**：只保留桌面相关项，其余隐藏；二级页改用 One UI 分组卡片。
+7. ~~**设置页收口**：只保留桌面相关项，其余隐藏；二级页改用 One UI 分组卡片~~
+   ✅ 已完成（§5.10）。剩余：把「关于」里的致谢 / 许可也改成 One UI 卡片样式。
 8. **动画复刻**：抽屉开合（背景模糊 + 图标错落）、图标按压缩放、页面切换、
    长按菜单弹出/收起，统一用 One UI 的 `FastOutSlowIn` / 弹簧参数。
 9. **裁剪 Quickstep**：15-dev 已无 `withoutQuickstep` flavor，需要自己接一个

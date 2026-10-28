@@ -180,7 +180,11 @@
     <string name="settings">Settings</string>
 
     <string name="general_label">General</string>
-    <string name="general_description">Colors, icon packs, notification dots</string>
+    <string name="general_description">Icon style, colors and fonts</string>
+    <string name="oneui_settings_appearance">Icons &amp; style</string>
+    <string name="oneui_settings_notifications">Notifications</string>
+    <string name="oneui_settings_section_look">Appearance</string>
+    <string name="oneui_settings_section_controls">Interaction</string>
 
     <string name="home_screen_label">Home screen</string>
     <string name="home_screen_description">Feed, grid, icons</string>
