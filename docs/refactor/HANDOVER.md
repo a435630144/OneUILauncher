@@ -201,6 +201,8 @@ adb shell input keyevent KEYCODE_BACK
 
 实测：把 CarMore 从第 1 位拖到第 4 位后，抽屉首行变为
 「OneUI 桌面 / Search / TMobile / CarMore」；切回字母顺序后分组标题恢复。
+编辑页的「排序方式」是 `ListPreference` 底部弹窗，切到字母顺序后提示文案与
+拖拽列表立即消失，返回抽屉分组恢复（截图 `drawer-sort-mode.png`）。
 
 > 拖动编辑器里的行必须**长按手柄**（`ReorderableDragHandle` 走
 > `longPressDraggableHandle`），直接滑动只会滚页面。
@@ -381,6 +383,8 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 | 提交 | 内容 |
 | --- | --- |
+| `1e45e44` | 抽屉：自定义排序与拖拽编辑器 |
+| `f041c8a` | 文档：交接文档记录索引条提交 |
 | `88d18ac` | 抽屉：One UI 右侧字母索引条 |
 | `b6725f8` | 抽屉：字母分组标题 |
 | `cec482e` | 抽屉：三点菜单改为 One UI 底部菜单 |

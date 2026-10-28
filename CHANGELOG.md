@@ -157,4 +157,5 @@
 - `ARCHITECTURE.md` 新增 §5.9，§7 增加自定义排序 / 编辑器 / 新装应用验证项与截图，
   §8 里程碑 6 标记完成。
 - `HANDOVER.md` 新增 §3.5（模式、数据格式、渲染与手动验证），更新已知问题与验收清单。
-- 新增截图 `drawer-sort-menu.png`、`drawer-sort-custom.png`、`drawer-sort-editor.png`。
+- 新增截图 `drawer-sort-menu.png`、`drawer-sort-custom.png`、`drawer-sort-editor.png`、
+  `drawer-sort-mode.png`。

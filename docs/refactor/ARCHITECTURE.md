@@ -316,8 +316,8 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 `drawer-index-drag.png`（拖动字母气泡）、`drawer-keyboard.png`（抽屉 + 键盘）、
 `drawer-menu.png`（抽屉底部菜单）、`drawer-sort.png`（排序子页）、
 `drawer-sort-menu.png`（自定义排序菜单）、`drawer-sort-custom.png`（自定义顺序抽屉）、
-`drawer-sort-editor.png`（拖拽排序编辑器）、`long-press.png`（长按菜单）、
-`recents.png`（最近任务）。
+`drawer-sort-editor.png`（拖拽排序编辑器）、`drawer-sort-mode.png`（排序方式弹窗）、
+`long-press.png`（长按菜单）、`recents.png`（最近任务）。
 
 ## 8. 下一步里程碑
 
