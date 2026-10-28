@@ -84,14 +84,16 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
     protected int mCloseChildFadeStartDelay = 0;
     protected int mCloseChildFadeDuration = 140;
 
-    private static final int OPEN_DURATION_U = 200;
+    // One UI: the long-press sheet grows from the touch point with a short,
+    // soft overshoot. Shorter and less dramatic than Material's 0.5 -> 1.02.
+    private static final int OPEN_DURATION_U = 240;
     private static final int OPEN_FADE_START_DELAY_U = 0;
-    private static final int OPEN_FADE_DURATION_U = 83;
+    private static final int OPEN_FADE_DURATION_U = 90;
     private static final int OPEN_CHILD_FADE_START_DELAY_U = 0;
-    private static final int OPEN_CHILD_FADE_DURATION_U = 83;
-    private static final int OPEN_OVERSHOOT_DURATION_U = 200;
+    private static final int OPEN_CHILD_FADE_DURATION_U = 110;
+    private static final int OPEN_OVERSHOOT_DURATION_U = 120;
 
-    private static final int CLOSE_DURATION_U = 233;
+    private static final int CLOSE_DURATION_U = 180;
     private static final int CLOSE_FADE_START_DELAY_U = 150;
     private static final int CLOSE_FADE_DURATION_U = 83;
     private static final int CLOSE_CHILD_FADE_START_DELAY_U = 150;
@@ -751,7 +753,7 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
         }
 
         float[] alphaValues = isOpening ? new float[] { 0, 1 } : new float[] { 1, 0 };
-        float[] scaleValues = isOpening ? new float[] { 0.5f, 1.02f } : new float[] { 1f, 0.5f };
+        float[] scaleValues = isOpening ? new float[] { 0.86f, 1.015f } : new float[] { 1f, 0.9f };
         Animator alpha = getAnimatorOfFloat(this, View.ALPHA, fadeDuration, fadeStartDelay,
                 LINEAR, alphaValues);
         Animator arrowAlpha = getAnimatorOfFloat(mArrow, View.ALPHA, fadeDuration, fadeStartDelay,
@@ -763,7 +765,7 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
 
         final AnimatorSet animatorSet = new AnimatorSet();
         if (isOpening) {
-            float[] scaleValuesOvershoot = new float[] { 1.02f, 1f };
+            float[] scaleValuesOvershoot = new float[] { 1.015f, 1f };
             PathInterpolator overshootInterpolator = new PathInterpolator(0.3f, 0, 0.33f, 1f);
             Animator overshootY = getAnimatorOfFloat(this, View.SCALE_Y,
                     OPEN_OVERSHOOT_DURATION_U, scaleDuration, overshootInterpolator,
