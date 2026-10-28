@@ -414,9 +414,12 @@
     <string name="community">社区</string>
     <string name="telegram">Telegram</string>
     <string name="news">新闻</string>
-    <string name="legal">Legal</string>
+    <string name="legal">法律信息</string>
     <string name="acknowledgements">鸣谢</string>
-    <string name="privacy_policy">Privacy policy</string>
+    <string name="privacy_policy">隐私政策</string>
+    <string name="privacy_policy_description">了解应用如何处理你的数据</string>
+    <string name="acknowledgements_description">开源许可与致谢名单</string>
+    <string name="about_open_source_notice">基于 Lawnchair 与 AOSP Launcher3 构建，遵循 GPL-3.0 / Apache-2.0。</string>
     <string name="contributor_status_active">Active</string>
     <string name="update_check_failed">Failed to check for updates</string>
     <string name="major_update_label">Breaking change!</string>
