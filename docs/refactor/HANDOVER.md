@@ -1,6 +1,6 @@
 # 交接文档（OneUI 桌面 / Lawnchair 15 基线）
 
-> 更新时间：2026-10-28
+> 更新时间：2026-10-29
 > 工作目录：`E:\OneDrive\家里台式\桌面\temp\OneUi_Desktop`
 > 分支：`main`（HEAD 以 `git log` 为准）
 > 架构与设计取舍见 [ARCHITECTURE.md](./ARCHITECTURE.md)，SESL 取舍见 [SESL-DECISION.md](./SESL-DECISION.md)。
@@ -10,10 +10,11 @@
 ## 1. 一句话状态
 
 底层 Launcher3 / Lawnchair 15 已经能构建、能装、能当默认桌面；首屏 4×6 + 5 Dock
-+ **随页面滑动的时钟覆盖层**完成；应用抽屉的**底部搜索胶囊**（One UI 8.0 样式）、
-**三点菜单打开的 One UI 底部菜单**（排序 / 设置）和**字母分组标题**已完成，并在模拟器
-验证布局、键盘避让、排序子页进出、遮罩关闭、输入态背景保持和分组标题不被裁剪。
-下一步是右侧字母索引、自定义排序、设置页卡片化和动画复刻；时钟 AppWidget 仍卡在
++ **随页面滑动的时钟覆盖层**完成；应用抽屉的**底部搜索胶囊**、**One UI 底部菜单**、
+**字母分组标题**、**右侧索引条**、**自定义排序**全部完成。设置首页已改成
+四张 One UI 卡片，通知独立成页，「关于」页改成图标 + 版本 + 法律信息卡。
+动画方面图标按压改成 0.92 缩小、抽屉打开时网格行级错落归位。
+下一步是二级设置页清理、页面视差、长按菜单弹性展开；时钟 AppWidget 仍卡在
 `BIND_APPWIDGET` 授权流程。
 
 当前 APK：
@@ -41,6 +42,10 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 抽屉 | 底部停靠搜索胶囊、24dp 圆角、右端三点菜单、键盘弹出时上移 | `search_container_all_apps.xml`、`AllAppsSearchInput.kt`、`ActivityAllAppsContainerView.java` |
 | 抽屉菜单 | 三点菜单打开 One UI 底部菜单：拖动条、排序 / 设置行、排序子页（字母序选中、自定义「即将支持」）、返回与遮罩关闭 | `ui/popup/OneUiDrawerMenu.kt`、`ComposeBottomSheet.kt` |
 | 抽屉分组 | 字母序按首字母插入分组标题（B/C/D/…）；整行渲染、分组处重置行计数，文件夹在最前，搜索 / 分类模式不受影响 | `OneUiAllAppsGridAdapter.kt`、`LawnchairAlphabeticalAppsList.kt`、`oneui_all_apps_section_header.xml`、`FloatingHeaderView.java` |
+| 抽屉索引 | One UI 细灰轨道、拖动加粗、蓝色圆形字母气泡 | `OneUiFastScroller.kt`、`all_apps_fast_scroller.xml` |
+| 抽屉排序 | 字母 / 自定义两种模式，设置页拖拽调序并持久化 | `AppDrawerSortPreference.kt`、`LawnchairAlphabeticalAppsList.kt` |
+| 设置 | 四张 One UI 卡片、独立通知页、One UI 关于页 | `PreferencesDashboard.kt`、`NotificationsPreferences.kt`、`about/About.kt` |
+| 动画 | 图标按压 0.92 缩小、抽屉打开时网格行级错落 | `FastBitmapDrawable.java`、`AllAppsTransitionController.java` |
 | 文档 | 架构、验证记录、上游同步、交接说明 | `docs/refactor/` |
 
 ---
@@ -231,6 +236,10 @@ adb shell input keyevent KEYCODE_BACK
 adb shell cmd notification allow_listener com.oneui.desktop/com.android.launcher3.notification.NotificationListener
 ```
 
+- **关于页**（`about/About.kt`）：顶部应用图标 + 名称 + 版本，下面「法律信息」
+  卡片放致谢（`AboutLicenses`）与隐私政策，底部一行开源声明。更新检查、
+  社区链接和贡献者列表已移除；中文标题用 `legal` → 「法律信息」。
+
 ### 3.7 图标按压动画
 
 改的是 `platform_frameworks_libs_systemui/iconloaderlib/src/com/android/launcher3/icons/FastBitmapDrawable.java`：
@@ -251,6 +260,20 @@ adb shell input motionevent UP 151 500
 ```
 
 实测截图里设置图标从 240px 缩到约 220px，标签位置不变（`anim-icon-press.png`）。
+
+### 3.8 抽屉开合错落
+
+`AllAppsTransitionController#setProgress` 每次进度更新时遍历抽屉可见行：
+
+- 行延迟按 `childTop / recyclerView.height` 归一化，再乘 `ICON_STAGGER_MAX_DELAY = 0.3`；
+- 每行额外下移 `ICON_STAGGER_TRANSLATION_DP = 12dp`，随进度回到 0；
+- 只改 `translationY`，**不改 alpha**，避免滑动过程中出现空白面板；
+- `mProgress` 1 是桌面、0 是抽屉，所以用 `1 - progress` 作为打开进度；
+- 顶部行先进入视口、先归位，越靠下的行越晚。
+
+只影响抽屉网格子项，工作区 / Dock / 搜索结果 / 索引条不受影响；抽屉打开后
+滚动、搜索、返回桌面都不会残留位移。模拟器掉帧明显，静帧不易看出错落，
+验收以真机或高帧率录屏为准。
 
 ---
 
@@ -371,15 +394,15 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - ~~隐藏与桌面无关的 Lawnchair 项（更新、备份、实验特性等）~~ ✅ 首页公告、备份 / 恢复、
   实验特性入口已从 UI 移除；调试菜单仅在偏好打开时显示。
 - ~~一级页只保留：主屏、应用抽屉、图标、手势、通知、关于~~ ✅ 已覆盖；
-  「通知」已从通用页拆成独立页面。
-- 剩余：二级页（主屏幕 / 应用抽屉 / 手势 / 关于）逐页清理说明文案与卡片顺序；
-  「关于」里的致谢 / 许可页面还是 Lawnchair 原样式。
+  「通知」已从通用页拆成独立页面，「关于」已改成 One UI 卡片
+  （`settings-about.png`）。
+- 剩余：二级页（主屏幕 / 应用抽屉 / 手势）逐页清理说明文案与卡片顺序。
 
 ### 6.5 动画复刻
 
 - ~~图标按压：`0.92` 缩放 + `FastOutSlowIn`~~ ✅ 已改为 0.92 + 150ms，按下减速、
   松开加速（§3.7）。
-- 抽屉开合：背景模糊 + 图标错落（`AllAppsTransitionController` / `AllAppsBackgroundDrawable`）；
+- ~~抽屉开合：图标错落~~ ✅ 行级 12dp 错落归位（§3.8）；背景模糊未做。
 - 页面切换：One UI 的轻微视差与淡入；
 - 长按菜单：从触点弹性展开（`ArrowPopup` / `OptionsPopupView`）。
 
@@ -404,7 +427,9 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - [ ] 设置首页：布局 / 外观 / 交互 / 关于四张卡片，无公告、无备份 / 实验入口
 - [ ] 设置 → 通知：授权通知使用权后显示开关、颜色、数量；未授权时只有警告
 - [ ] 设置 → 图标与风格：标题正确，字体 / 图标 / 颜色正常，无通知圆点
+- [ ] 设置 → 关于：图标 + 名称 + 版本 +「法律信息」卡片 + 开源声明，无更新 / 社区入口
 - [ ] 图标按压：按住图标缩小、松开回弹，文字标签不动
+- [ ] 抽屉开合：打开时网格行级错落归位；打开后滚动、索引、搜索、返回桌面无残留位移
 - [ ] 搜索框隐藏开关：打开后列表不留底部空白
 - [ ] 长按桌面、拖拽图标、最近任务不受影响
 - [ ] `docs/refactor/shots/` 截图更新
@@ -438,6 +463,9 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 | 提交 | 内容 |
 | --- | --- |
+| `4980955` | 动画：抽屉打开时网格行级错落 |
+| `9eae104` | 设置：关于页改为 One UI 结构 |
+| `080207a` | 文档：交接文档记录动画提交 |
 | `ef92885` | 动画：图标按压改为 One UI 缩放 |
 | `6d072ff` | 文档：交接文档记录设置页提交 |
 | `7320a7f` | 设置：One UI 分组卡片与独立通知页 |

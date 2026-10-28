@@ -197,3 +197,26 @@
 - `ARCHITECTURE.md` 新增 §5.11，§7 增加图标按压验证项，§8 里程碑 8 标记部分完成。
 - `HANDOVER.md` 新增 §3.7（参数与截图方法），更新 §6.5 与验收清单。
 - 新增对比截图 `anim-icon-press.png`。
+
+## v0.16 — 关于页与抽屉错落（2026-10-29）
+
+**设置**
+
+- 「关于」页改成 One UI 结构：图标 + 名称 + 版本，下面「法律信息」卡片放
+  致谢 / 隐私政策，底部一行开源声明。
+- 移除夜间更新检查、社区链接与贡献者列表；中文 `legal` 改为「法律信息」。
+- 新增 `about_open_source_notice`、`acknowledgements_description`、
+  `privacy_policy_description` 文案（中英）。
+
+**动画**
+
+- 抽屉打开时网格按行错落归位：行延迟按 `childTop / 列表高度` 归一化后乘 0.3，
+  每行额外下移 12dp 再回 0；只改 `translationY`，不改 alpha，避免空白面板。
+- 参数集中在 `AllAppsTransitionController`，抽屉打开后滚动 / 搜索 / 返回桌面
+  不残留位移。
+
+**文档**
+
+- `ARCHITECTURE.md` 新增 §5.10 第 5 点与 §5.12，更新 §7 截图与验证、§8 里程碑。
+- `HANDOVER.md` 新增 §3.8，补关于页说明、验收清单与最近提交表。
+- 新增截图 `settings-about.png`。

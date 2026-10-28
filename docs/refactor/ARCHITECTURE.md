@@ -284,6 +284,9 @@ AOSP 的 `RecyclerViewFastScroller` 画的是 6–8dp 的主题色长条，拖�
    `oneui_settings_section_look`、`oneui_settings_section_controls`；`general_description`
    改为「图标、颜色与字体」（通知已移出）。
 4. **调试入口**：只有打开「调试菜单」偏好时才在标题栏显示扳手图标，普通用户看不到。
+5. **关于页**：`about/About.kt` 改成 One UI 结构：图标 + 应用名 + 版本，下面一张
+   「法律信息」卡片（致谢 / 隐私政策），底部一行开源声明。移除夜间更新检查、
+   社区链接与贡献者列表——自编译分支不需要这些入口，致谢仍可从卡片进入。
 
 ### 5.11 图标按压动画
 
@@ -301,6 +304,22 @@ AOSP 的 `FastBitmapDrawable` 在按下时把图标**放大**到 1.1 倍，One U
 缩放只作用于图标 drawable，文字标签保持不动，与 One UI 一致；工作区、文件夹预览、
 抽屉、Dock 共用同一个 drawable，所以一处改动全场景生效。截图见
 `docs/refactor/shots/anim-icon-press.png`（左静止、右按下）。
+
+### 5.12 抽屉开合错落
+
+One UI 的抽屉不是整块网格刚性上移，图标落位时有一个由近及远的轻微错落。
+实现放在 `AllAppsTransitionController#setProgress`，每次进度更新时遍历
+`AllAppsRecyclerView` 的可见子项：
+
+| 参数 | 值 | 说明 |
+| --- | --- | --- |
+| `ICON_STAGGER_MAX_DELAY` | `0.3` | 按 `childTop / recyclerHeight` 归一化，顶部行 0、底部行 0.3 |
+| `ICON_STAGGER_TRANSLATION_DP` | `12dp` | 行落位前的额外下移量，结束后回到 0 |
+| 作用 | `translationY` | 不改 alpha，避免滑动过程中出现空白面板 |
+
+`mProgress` 的 1 表示桌面、0 表示抽屉完全打开，所以代码用 `1 - progress` 得到
+开合进度；顶部行先进入视口先稳定，越靠下的行越晚。只影响抽屉网格子项，
+工作区、Dock、搜索结果、索引条不受影响，抽屉打开后滚动也不会残留位移。
 
 ## 6. 构建与运行
 
@@ -356,7 +375,9 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 | 设置首页 | 四张卡片：布局 / 外观 / 交互 / 关于；行内无前置图标，公告、备份、实验特性入口不再出现 |
 | 图标与风格 | 设置 → 图标与风格：标题正确，只保留旋转、字体、图标、颜色；不再包含通知圆点 |
 | 通知页 | 设置 → 外观 → 通知：独立页显示通知圆点开关、圆点颜色、数量开关；授予通知使用权后控件正常出现 |
+| 关于页 | 图标 + 名称 + 版本 +「法律信息」卡片（致谢 / 隐私政策）+ 开源声明；无更新检查与社区链接 |
 | 图标按压 | 长按前按下图标可见缩小到 0.92、松开 150ms 回弹；文字标签不缩放（`anim-icon-press.png`） |
+| 抽屉开合 | 打开时网格行级 12dp 错落归位；打开后滚动、索引条、搜索、返回桌面均正常，图标无残留位移 |
 | 长按桌面 | 「背景 / 小部件 / 启动器设置」菜单正常，时钟层未阻塞手势 |
 | 最近任务 | Quickstep 正常，时钟不会出现在任务快照里 |
 
@@ -367,7 +388,8 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 `drawer-sort-menu.png`（自定义排序菜单）、`drawer-sort-custom.png`（自定义顺序抽屉）、
 `drawer-sort-editor.png`（拖拽排序编辑器）、`drawer-sort-mode.png`（排序方式弹窗）、
 `settings-root.png`（设置首页）、`settings-appearance.png`（图标与风格）、
-`settings-notifications.png`（通知页）、`anim-icon-press.png`（图标按压对比）、
+`settings-notifications.png`（通知页）、`settings-about.png`（关于页）、
+`anim-icon-press.png`（图标按压对比）、
 `long-press.png`（长按菜单）、`recents.png`（最近任务）。
 
 ## 8. 下一步里程碑
@@ -386,11 +408,12 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
    ✅ 已完成（§5.9）。剩余：按使用频率排序（需要接 `UsageStatsManager` 或
    Lawnchair 的 `PredictionProvider`），以及抽屉内直接长按拖拽。
 7. ~~**设置页收口**：只保留桌面相关项，其余隐藏；二级页改用 One UI 分组卡片~~
-   ✅ 已完成（§5.10）。剩余：把「关于」里的致谢 / 许可也改成 One UI 卡片样式。
+   ✅ 已完成（§5.10）。剩余：二级页（主屏幕 / 应用抽屉 / 手势）的文案与卡片顺序。
 8. **动画复刻**：抽屉开合（背景模糊 + 图标错落）、图标按压缩放、页面切换、
    长按菜单弹出/收起，统一用 One UI 的 `FastOutSlowIn` / 弹簧参数。
    - ~~图标按压~~ ✅ 已改为 0.92 缩小 + 150ms（§5.11）。
-   - 剩余：抽屉开合错落、页面视差、长按菜单弹性展开。
+   - ~~抽屉开合错落~~ ✅ 行级 12dp 错落归位（§5.12）。
+   - 剩余：抽屉背景模糊、页面视差、长按菜单弹性展开。
 9. **裁剪 Quickstep**：15-dev 已无 `withoutQuickstep` flavor，需要自己接一个
    不带 recents 的构建变体，把 332 MB 的基线压下来。
 

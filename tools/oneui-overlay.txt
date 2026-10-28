@@ -30,6 +30,7 @@ lawnchair/src/app/lawnchair/views/OneUiClockView.kt
 lawnchair/src/app/lawnchair/views/OneUiFastScroller.kt
 lawnchair/src/app/lawnchair/ui/popup/OneUiDrawerMenu.kt
 lawnchair/src/app/lawnchair/preferences/PreferenceManager.kt
+lawnchair/src/app/lawnchair/ui/preferences/about/About.kt
 lawnchair/src/app/lawnchair/ui/preferences/destinations/AppDrawerPreferences.kt
 lawnchair/src/app/lawnchair/ui/preferences/destinations/AppDrawerSortPreference.kt
 lawnchair/src/app/lawnchair/ui/preferences/destinations/GeneralPreferences.kt
@@ -44,5 +45,6 @@ res/layout/all_apps_content.xml
 res/layout/all_apps_fast_scroller.xml
 res/values/styles.xml
 src/com/android/launcher3/allapps/ActivityAllAppsContainerView.java
+src/com/android/launcher3/allapps/AllAppsTransitionController.java
 src/com/android/launcher3/allapps/FloatingHeaderView.java
 tools/fetch-sesl.ps1
