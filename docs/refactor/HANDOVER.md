@@ -438,6 +438,8 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 | 提交 | 内容 |
 | --- | --- |
+| `ef92885` | 动画：图标按压改为 One UI 缩放 |
+| `6d072ff` | 文档：交接文档记录设置页提交 |
 | `7320a7f` | 设置：One UI 分组卡片与独立通知页 |
 | `b66d459` | 文档：交接文档记录自定义排序提交 |
 | `1e45e44` | 抽屉：自定义排序与拖拽编辑器 |
