@@ -79,6 +79,33 @@ fun AppDrawerPreferences(
         ExpandAndShrink(visible = drawerListAdapter.state.value) {
             AppDrawerFolderPreferenceItem()
         }
+        PreferenceGroup(heading = stringResource(id = R.string.grid)) {
+            SliderPreference(
+                label = stringResource(id = R.string.app_drawer_columns),
+                adapter = prefs2.drawerColumns.getAdapter(),
+                step = 1,
+                valueRange = 3..10,
+            )
+            SliderPreference(
+                adapter = prefs2.drawerCellHeightFactor.getAdapter(),
+                label = stringResource(id = R.string.row_height_label),
+                valueRange = 0.3F..1.5F,
+                step = 0.1F,
+                showAsPercentage = true,
+            )
+            SliderPreference(
+                adapter = prefs2.drawerLeftRightMarginFactor.getAdapter(),
+                label = stringResource(id = R.string.app_drawer_indent_label),
+                valueRange = 0.0F..1.5F,
+                step = 0.05F,
+                showAsPercentage = true,
+            )
+            SwitchPreference(
+                label = stringResource(id = R.string.oneui_drawer_section_headers),
+                description = stringResource(id = R.string.oneui_drawer_section_headers_description),
+                adapter = prefs.drawerSectionHeaders.getAdapter(),
+            )
+        }
         PreferenceGroup(heading = stringResource(id = R.string.general_label)) {
             NavigationActionPreference(
                 label = stringResource(id = R.string.oneui_drawer_sort),
@@ -105,33 +132,6 @@ fun AppDrawerPreferences(
             SwitchPreference(
                 label = stringResource(id = R.string.pref_all_apps_search_bar_background),
                 adapter = prefs2.appDrawerSearchBarBackground.getAdapter(),
-            )
-        }
-        PreferenceGroup(heading = stringResource(id = R.string.grid)) {
-            SliderPreference(
-                label = stringResource(id = R.string.app_drawer_columns),
-                adapter = prefs2.drawerColumns.getAdapter(),
-                step = 1,
-                valueRange = 3..10,
-            )
-            SliderPreference(
-                adapter = prefs2.drawerCellHeightFactor.getAdapter(),
-                label = stringResource(id = R.string.row_height_label),
-                valueRange = 0.3F..1.5F,
-                step = 0.1F,
-                showAsPercentage = true,
-            )
-            SliderPreference(
-                adapter = prefs2.drawerLeftRightMarginFactor.getAdapter(),
-                label = stringResource(id = R.string.app_drawer_indent_label),
-                valueRange = 0.0F..1.5F,
-                step = 0.05F,
-                showAsPercentage = true,
-            )
-            SwitchPreference(
-                label = stringResource(id = R.string.oneui_drawer_section_headers),
-                description = stringResource(id = R.string.oneui_drawer_section_headers_description),
-                adapter = prefs.drawerSectionHeaders.getAdapter(),
             )
         }
         PreferenceGroup(heading = stringResource(id = R.string.icons)) {

@@ -32,7 +32,6 @@ import app.lawnchair.preferences2.preferenceManager2
 import app.lawnchair.theme.color.ColorMode
 import app.lawnchair.ui.preferences.LocalIsExpandedScreen
 import app.lawnchair.ui.preferences.components.FeedPreference
-import app.lawnchair.ui.preferences.components.GestureHandlerPreference
 import app.lawnchair.ui.preferences.components.HomeLayoutSettings
 import app.lawnchair.ui.preferences.components.NavigationActionPreference
 import app.lawnchair.ui.preferences.components.OverlayHandlerPreference
@@ -75,6 +74,25 @@ fun HomeScreenPreferences(
             HomeLayoutSettings()
         }
 
+        PreferenceGroup(heading = stringResource(id = R.string.layout)) {
+            val columns by prefs.workspaceColumns.getAdapter()
+            val rows by prefs.workspaceRows.getAdapter()
+            NavigationActionPreference(
+                label = stringResource(id = R.string.home_screen_grid),
+                destination = HomeScreenGrid,
+                subtitle = stringResource(id = R.string.x_by_y, columns, rows),
+            )
+            SwitchPreference(
+                adapter = lockHomeScreenAdapter,
+                label = stringResource(id = R.string.home_screen_lock),
+                description = stringResource(id = R.string.home_screen_lock_description),
+            )
+            SwitchPreference(
+                adapter = prefs2.enableDotPagination.getAdapter(),
+                label = stringResource(id = R.string.show_dot_pagination_label),
+                description = stringResource(id = R.string.show_dot_pagination_description),
+            )
+        }
         PreferenceGroup(heading = stringResource(id = R.string.general_label)) {
             val addIconToHomeAdapter = prefs.addIconToHome.getAdapter()
             val isDeckLayoutAdapter = prefs2.deckLayout.getAdapter()
@@ -87,25 +105,10 @@ fun HomeScreenPreferences(
                     enabled = lockHomeScreenAdapter.state.value.not(),
                 )
             }
-            GestureHandlerPreference(
-                adapter = prefs2.doubleTapGestureHandler.getAdapter(),
-                label = stringResource(id = R.string.gesture_double_tap),
-            )
             SwitchPreference(
                 prefs.infiniteScrolling.getAdapter(),
                 label = stringResource(id = R.string.infinite_scrolling_label),
                 description = stringResource(id = R.string.infinite_scrolling_description),
-            )
-        }
-        PreferenceGroup(heading = stringResource(id = R.string.home_screen_actions)) {
-            ClickablePreference(
-                label = stringResource(id = R.string.remove_all_views_from_home_screen),
-                confirmationText = stringResource(id = R.string.remove_all_views_from_home_screen_desc),
-                onClick = {
-                    scope.launch {
-                        LauncherAppState.getInstance(context).clearAllViewsFromHomeScreen()
-                    }
-                },
             )
         }
         PreferenceGroup(heading = stringResource(id = R.string.minus_one)) {
@@ -143,25 +146,6 @@ fun HomeScreenPreferences(
             SwitchPreference(
                 adapter = prefs2.showTopShadow.getAdapter(),
                 label = stringResource(id = R.string.show_sys_ui_scrim),
-            )
-        }
-        PreferenceGroup(heading = stringResource(id = R.string.layout)) {
-            val columns by prefs.workspaceColumns.getAdapter()
-            val rows by prefs.workspaceRows.getAdapter()
-            NavigationActionPreference(
-                label = stringResource(id = R.string.home_screen_grid),
-                destination = HomeScreenGrid,
-                subtitle = stringResource(id = R.string.x_by_y, columns, rows),
-            )
-            SwitchPreference(
-                adapter = lockHomeScreenAdapter,
-                label = stringResource(id = R.string.home_screen_lock),
-                description = stringResource(id = R.string.home_screen_lock_description),
-            )
-            SwitchPreference(
-                adapter = prefs2.enableDotPagination.getAdapter(),
-                label = stringResource(id = R.string.show_dot_pagination_label),
-                description = stringResource(id = R.string.show_dot_pagination_description),
             )
         }
         PreferenceGroup(heading = stringResource(id = R.string.popup_menu)) {
@@ -244,6 +228,17 @@ fun HomeScreenPreferences(
                 adapter = prefs2.forceWidgetResize.getAdapter(),
                 label = stringResource(id = R.string.force_widget_resize_label),
                 description = stringResource(id = R.string.force_widget_resize_description),
+            )
+        }
+        PreferenceGroup(heading = stringResource(id = R.string.home_screen_actions)) {
+            ClickablePreference(
+                label = stringResource(id = R.string.remove_all_views_from_home_screen),
+                confirmationText = stringResource(id = R.string.remove_all_views_from_home_screen_desc),
+                onClick = {
+                    scope.launch {
+                        LauncherAppState.getInstance(context).clearAllViewsFromHomeScreen()
+                    }
+                },
             )
         }
     }

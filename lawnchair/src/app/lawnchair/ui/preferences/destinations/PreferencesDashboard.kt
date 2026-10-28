@@ -95,11 +95,6 @@ fun PreferencesDashboard(
             }
         },
     ) {
-        if (BuildConfig.APPLICATION_ID.contains("nightly") || BuildConfig.DEBUG) {
-            PreferencesDebugWarning()
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
         if (!context.isDefaultLauncher()) {
             PreferencesSetDefaultLauncherWarning()
             Spacer(modifier = Modifier.height(8.dp))
@@ -183,22 +178,6 @@ fun PreferencesDashboard(
                 destination = About,
             )
         }
-    }
-}
-
-@Composable
-fun PreferencesDebugWarning(
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier.padding(horizontal = 16.dp),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.errorContainer,
-    ) {
-        app.lawnchair.ui.preferences.components.controls.WarningPreference(
-            // Don't move to strings.xml, no need to translate this warning
-            text = "You are using a development build, which may contain bugs and broken features. Use at your own risk!",
-        )
     }
 }
 
