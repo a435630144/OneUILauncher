@@ -287,6 +287,11 @@ AOSP 的 `RecyclerViewFastScroller` 画的是 6–8dp 的主题色长条，拖�
 5. **关于页**：`about/About.kt` 改成 One UI 结构：图标 + 应用名 + 版本，下面一张
    「法律信息」卡片（致谢 / 隐私政策），底部一行开源声明。移除夜间更新检查、
    社区链接与贡献者列表——自编译分支不需要这些入口，致谢仍可从卡片进入。
+6. **二级页整理**：主屏幕页把「布局」（网格 / 锁定 / 页面指示点）提到最前，
+   清空主屏幕移到末尾；双击手势与独立「手势」页重复，从主屏幕页移除。
+   应用抽屉页把「网格」提到「通用」之前。设置首页不再显示开发版警告条；
+   补译无限滚动、页面指示点、Material You 弹出菜单、搜索栏独立背景、
+   清空主屏幕等中文文案，主屏幕副标题改为「网格、壁纸、图标」。
 
 ### 5.11 图标按压动画
 
@@ -376,6 +381,7 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 | 图标与风格 | 设置 → 图标与风格：标题正确，只保留旋转、字体、图标、颜色；不再包含通知圆点 |
 | 通知页 | 设置 → 外观 → 通知：独立页显示通知圆点开关、圆点颜色、数量开关；授予通知使用权后控件正常出现 |
 | 关于页 | 图标 + 名称 + 版本 +「法律信息」卡片（致谢 / 隐私政策）+ 开源声明；无更新检查与社区链接 |
+| 二级设置页 | 主屏幕：布局 → 通用 → 订阅 → 样式 → 壁纸 → 弹出菜单 → 状态栏 → 图标 → 小组件 → 清空；应用抽屉：布局 → 网格 → 通用 → 样式 → 图标 → 高级；无开发版警告条 |
 | 图标按压 | 长按前按下图标可见缩小到 0.92、松开 150ms 回弹；文字标签不缩放（`anim-icon-press.png`） |
 | 抽屉开合 | 打开时网格行级 12dp 错落归位；打开后滚动、索引条、搜索、返回桌面均正常，图标无残留位移 |
 | 长按桌面 | 「背景 / 小部件 / 启动器设置」菜单正常，时钟层未阻塞手势 |
@@ -387,7 +393,8 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 `drawer-menu.png`（抽屉底部菜单）、`drawer-sort.png`（排序子页）、
 `drawer-sort-menu.png`（自定义排序菜单）、`drawer-sort-custom.png`（自定义顺序抽屉）、
 `drawer-sort-editor.png`（拖拽排序编辑器）、`drawer-sort-mode.png`（排序方式弹窗）、
-`settings-root.png`（设置首页）、`settings-appearance.png`（图标与风格）、
+`settings-root.png`（设置首页）、`settings-home.png`（主屏幕设置）、
+`settings-app-drawer.png`（应用抽屉设置）、`settings-appearance.png`（图标与风格）、
 `settings-notifications.png`（通知页）、`settings-about.png`（关于页）、
 `anim-icon-press.png`（图标按压对比）、
 `long-press.png`（长按菜单）、`recents.png`（最近任务）。
@@ -408,7 +415,8 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
    ✅ 已完成（§5.9）。剩余：按使用频率排序（需要接 `UsageStatsManager` 或
    Lawnchair 的 `PredictionProvider`），以及抽屉内直接长按拖拽。
 7. ~~**设置页收口**：只保留桌面相关项，其余隐藏；二级页改用 One UI 分组卡片~~
-   ✅ 已完成（§5.10）。剩余：二级页（主屏幕 / 应用抽屉 / 手势）的文案与卡片顺序。
+   ✅ 已完成（§5.10）。主屏幕 / 应用抽屉二级页已重排并补齐中文。
+   剩余：手势页文案与卡片顺序，应用抽屉「糖果」实验布局入口是否隐藏。
 8. **动画复刻**：抽屉开合（背景模糊 + 图标错落）、图标按压缩放、页面切换、
    长按菜单弹出/收起，统一用 One UI 的 `FastOutSlowIn` / 弹簧参数。
    - ~~图标按压~~ ✅ 已改为 0.92 缩小 + 150ms（§5.11）。
