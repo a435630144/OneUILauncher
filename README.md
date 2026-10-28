@@ -9,7 +9,8 @@
 ## 当前状态（第一阶段骨架）
 
 - 桌面 **4 列 × 6 行**，Dock **5 位**
-- One UI 时钟 / 日期（大号 44sp 时间 + 中文日期，随第一页滚动）
+- One UI 时钟 / 日期：4×1 主屏幕小组件（44sp 时间 + 中文日期），可长按移除；
+  未绑定或删除后由覆盖层回退，首屏始终有时钟
 - 首屏默认排布：设置 / 时钟 / 日历 / 文件 + 电话 / 短信 / 相机 / 图库 / 通讯录
 - 关闭 Lawnchair 的 smartspace 独立首屏页与 Dock 上方搜索条
 - 应用抽屉：底部 One UI 搜索胶囊 + 三点菜单，键盘弹出时自动上移
@@ -59,7 +60,9 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 src/                 Launcher3 内核（Java）
 res/                 内核资源
 lawnchair/src/       Lawnchair 扩展（Kotlin）
-  app/lawnchair/views/OneUiClockView.kt   首屏时钟随页面滚动
+  app/lawnchair/oneui/OneUiClockWidgetProvider.kt   时钟小组件
+  app/lawnchair/oneui/OneUiClockWidgetController.kt 首次落位 / 绑定状态
+  app/lawnchair/views/OneUiClockView.kt             未绑定时覆盖层回退
 lawnchair/res/       One UI 资源覆盖（优先级高于 res/）
   layout/launcher.xml              首屏根布局 + 时钟
   xml/default_workspace_4x6.xml    首屏默认排布

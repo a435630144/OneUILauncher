@@ -254,3 +254,30 @@
 - `ARCHITECTURE.md` 新增 §5.13，更新 §7 与 §8 里程碑。
 - `HANDOVER.md` 新增 §3.9、验收项与提交表。
 - `tools/oneui-overlay.txt` 增加 `ArrowPopup.java`。
+
+## v0.19 — 时钟升级为 AppWidget（2026-10-29）
+
+**功能**
+
+- 新增 `OneUiClockWidgetProvider`：4×1 主屏幕小组件，44sp 时间 + 14sp 中文日期；
+  两个 `TextClock` 自走时，`updatePeriodMillis=0`，无配置页。
+- 新增 `OneUiClockWidgetController`：首次启动通过 `Launcher.addPendingItem` 把时钟
+  落到第 0 页 (0,0)；首次绑定走系统 `ACTION_APPWIDGET_BIND` 授权框，勾选
+  「始终允许」后只需确认一次。
+- 绑定成功后关闭 `TYPE_WIDGET_RESIZE_FRAME`，不留调整框；自动清理失效的 widget id。
+- 原 `OneUiClockView` 保留为回退：检测到已绑定小组件时隐藏，删除小组件后恢复。
+  显隐改为 `OneUiClockWidgetController` 的监听器回调，不再依赖 pre-draw 轮询。
+
+**验证**
+
+- 模拟器首次绑定、落位、RemoteViews 时间/日期刷新通过；`dumpsys appwidget`
+  确认 `OneUiClockWidgetProvider` 已托管，桌面第 0 行读取到时间与日期。
+- 长按小组件拖到「移除」后，撤销条消失时覆盖层恢复；点「撤销」小组件恢复且覆盖层
+  再次隐藏。
+
+**文档**
+
+- `ARCHITECTURE.md` §5.3 改写为「AppWidget + 覆盖层回退」，更新 §7 验证、§8 里程碑。
+- `HANDOVER.md` 更新 §1/§2/§3.1/§4/§6.2/§7。
+- `README.md` 功能列表与目录结构同步。
+- `tools/oneui-overlay.txt` 增加时钟相关新文件。

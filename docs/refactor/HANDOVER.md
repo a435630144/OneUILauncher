@@ -10,12 +10,11 @@
 ## 1. 一句话状态
 
 底层 Launcher3 / Lawnchair 15 已经能构建、能装、能当默认桌面；首屏 4×6 + 5 Dock
-+ **随页面滑动的时钟覆盖层**完成；应用抽屉的**底部搜索胶囊**、**One UI 底部菜单**、
-**字母分组标题**、**右侧索引条**、**自定义排序**全部完成。设置首页已改成
-四张 One UI 卡片，通知独立成页，「关于」页改成图标 + 版本 + 法律信息卡。
-动画方面图标按压改成 0.92 缩小、抽屉打开时网格行级错落归位。
-下一步是二级设置页清理、页面视差、长按菜单弹性展开；时钟 AppWidget 仍卡在
-`BIND_APPWIDGET` 授权流程。
++ **4×1 时钟 AppWidget**（未绑定时覆盖层回退）完成；应用抽屉的**底部搜索胶囊**、
+**One UI 底部菜单**、**字母分组标题**、**右侧索引条**、**自定义排序**全部完成。
+设置首页已改成四张 One UI 卡片，通知独立成页，「关于」页改成图标 + 版本 + 法律信息卡。
+动画方面图标按压改成 0.92 缩小、抽屉打开时网格行级错落归位、长按菜单弹性展开。
+下一步是抽屉背景模糊、页面切换视差，以及 One UI 时钟的 4 种样式 / 配置页。
 
 当前 APK：
 
@@ -37,7 +36,7 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 应用身份 | `com.oneui.desktop`、显示名「OneUI 桌面」、无 `.debug` 后缀 | `build.gradle` |
 | 网格 | 4 列 × 6 行、Dock 5 位，DB 名 `launcher_6_4_5.db` | `device_profiles.xml`、`PreferenceManager.kt` |
 | 首屏 | 第 0 行留空给时钟；第 1 行 4 图标；Dock 5 图标 | `default_workspace_4x6.xml` |
-| 时钟 | 44sp 时间 + 14sp 中文日期，随 Workspace 页面滚动（非 AppWidget） | `lawnchair/res/layout/launcher.xml`、`OneUiClockView.kt` |
+| 时钟 | 4×1 AppWidget（44sp 时间 + 14sp 中文日期），首次启动自动落位；未绑定 / 删除后覆盖层回退 | `oneui/OneUiClockWidgetProvider.kt`、`OneUiClockWidgetController.kt`、`launcher.xml`、`OneUiClockView.kt` |
 | 视觉 | squircle 图标、单行抽屉标签、12/16/20/26dp 圆角、One UI 字号 | `config.xml`、`Shape.kt`、`Type.kt` |
 | 抽屉 | 底部停靠搜索胶囊、24dp 圆角、右端三点菜单、键盘弹出时上移 | `search_container_all_apps.xml`、`AllAppsSearchInput.kt`、`ActivityAllAppsContainerView.java` |
 | 抽屉菜单 | 三点菜单打开 One UI 底部菜单：拖动条、排序 / 设置行、排序子页（字母序选中、自定义「即将支持」）、返回与遮罩关闭 | `ui/popup/OneUiDrawerMenu.kt`、`ComposeBottomSheet.kt` |
@@ -73,17 +72,28 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 > 注意：`hideAppDrawerSearchBar` 打开时，列表不再预留底部空白，搜索栏本身由
 > `AllAppsSearchInput` 的 `isInvisible` / 高度 0 逻辑隐藏。
 
-### 3.1 时钟随页面滚动
+### 3.1 时钟 AppWidget 与覆盖层回退
 
-时钟在 `launcher.xml` 里仍然是 `DragLayer` 的子 View，但 `OneUiClockView` 会跟随
-第一页：
+时钟首屏由真实 AppWidget 提供，`OneUiClockView` 只作回退。
 
-1. 在 `onAttachedToWindow` 里找到 `R.id.workspace`，用
-   `ViewTreeObserver.OnPreDrawListener` 每帧读取 `workspace.scrollX`；
-2. `translationX = -scrollX`，滑到第二页时时钟被推出屏幕，滑回第一页时再推回来；
-3. 只在 `scrollX` 变化时更新，避免每帧重复写属性；
-4. 启动时如果恢复到非 0 页，pre-draw 会在首帧前修正；
-5. 用 pre-draw 而不是 `setOnScrollChangeListener`：实测后者在页面切换时不可靠。
+**AppWidget**
+
+1. `oneui_clock_widget_info.xml`：4×1、`resizeMode=none`、`updatePeriodMillis=0`，
+   无配置页；`oneui_clock_widget.xml` 里两个 `TextClock` 自走时。
+2. `LawnchairLauncher.onResume` 调 `OneUiClockWidgetController.onLauncherResume`：
+   首次启动用 `Launcher.addPendingItem` 落到第 0 页 (0,0)。
+3. 首次绑定弹系统 `ACTION_APPWIDGET_BIND` 对话框；勾选「始终允许」后只需确认一次。
+4. `onUpdate` 登记 widget id，`onDeleted` 注销；控制器 `onResume` 时清理失效 id。
+5. 小组件可长按拖动，拖到顶部「移除」删除。
+
+**覆盖层回退**
+
+1. `launcher.xml` 的 `@id/oneui_clock` 仍保留，绑定成功后 `GONE`。
+2. `OneUiClockWidgetController` 维护状态监听器；`onWidgetsBound` /
+   `onWidgetsDeleted` 直接通知覆盖层，不依赖窗口绘制帧。
+3. 删除小组件、取消授权或清数据后未绑定，覆盖层保持可见。
+4. 页面滚动仍由 `OneUiClockView` 的 `OnPreDrawListener` 同步
+   `translationX = -workspace.scrollX`；只在 `scrollX` 变化时更新。
 
 验证方法：给 Workspace 增加第二页（拖一个图标到右边缘，或临时改数据库的
 `favorites.screen`），左滑后时钟应完全离开屏幕，右滑回第一页后恢复；抽屉、长按菜单、
@@ -299,7 +309,8 @@ Material You 弹窗默认开启，动画参数集中在 `ArrowPopup`：
 | --- | --- | --- |
 | GitHub 网络不稳定 | 无法 push / 拉取上游 | 网络恢复后 `git push origin main`；不要尝试 unshallow 旧 fork |
 | 模拟器偶尔退出 | 验证中断 | 用 `-no-window -no-snapshot -gpu off` 启动；截图用 `adb shell screencap` + `adb pull`（PowerShell 5.1 不要用 `>` 重定向二进制）；必要时重启 AVD |
-| 时钟不能当作页面子项 | 已随第一页滚动，但长按不能选中/移除，样式固定 | 迁移到 AppWidget（见 §6.2）；已实现方案 B 的滚动同步 |
+| 时钟只有一种样式 | 4×1 AppWidget 已可长按移除，但没有 One UI 的 4 种时钟样式 / 配置页 | 后续加配置 Activity 与多套 RemoteViews；覆盖层与 AppWidget 保持同款默认样式 |
+| 首次绑定需系统确认 | 侧载应用受 `BIND_APPWIDGET` 限制，首次启动会弹「是否允许创建微件」 | 勾选「始终允许」即可；取消后覆盖层继续显示，不会自动重试 |
 | 抽屉三点菜单 | 已改为 One UI 底部菜单（排序 / 设置），排序支持字母 / 自定义两种模式 | 排序编辑器在设置页，抽屉内暂不支持长按拖拽（见 §3.5 / §6.3） |
 | 自定义排序覆盖范围 | 只对主用户的应用生效；工作资料 / 私密空间仍走 AOSP 顺序 | 多资料场景后续再扩展，当前不影响主用户 |
 | 使用频率排序 | 尚未实现，只有字母 / 自定义 | 需要接 `UsageStatsManager` 或 `PredictionProvider` 的排序信号 |
@@ -369,28 +380,26 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 ### 6.2 时钟 AppWidget
 
-> **先决条件**：`BIND_APPWIDGET` 是签名权限，侧载 APK 默认拿不到（`dumpsys package`
-> 里只在 requested permissions，不在 install permissions）。`DefaultLayoutParser`
-> 的 `<appwidget>` 调 `bindAppWidgetIdIfAllowed` 失败后会直接丢弃该 widget。
-> 因此做真 AppWidget 前必须先决定绑定路径：
-> - 方案 A：首次启动时用 `AppWidgetHost.startAppWidgetBinding()` 弹系统确认框，
->   用户同意后再写入数据库；
-> - 方案 B：把时钟做成页面内自绘控件（随 Workspace 滚动、设置里可隐藏），
->   等有系统签名或绑定流程后再升级为 AppWidget。
-> 当前代码是 `launcher.xml` 的 `OneUiClockView`，已完成方案 B 的页面滚动同步；
-> 剩余缺口是「可长按移除 / 可换样式」。
+已完成。关键结论：
 
-目标：把 `launcher.xml` 里的 `@id/oneui_clock` 覆盖层替换为真正的 AppWidget，
-让它可长按移除、可在「小部件」里换样式（随页面滚动已由 `OneUiClockView` 实现）。
+- `BIND_APPWIDGET` 是签名权限，侧载 APK 不能静默绑定；但**可以**走系统
+  `ACTION_APPWIDGET_BIND` 对话框，用户勾选「始终允许」后由系统授予该 provider 的绑定权。
+  因此不要往 `default_workspace_4x6.xml` 写 `<appwidget>`（默认布局解析失败会直接丢弃），
+  而是在 `onResume` 里用 `Launcher.addPendingItem` 主动添加，让 Launcher3 现成的
+  `REQUEST_BIND_APPWIDGET` 链路处理授权和重试。
+- 自动落位只尝试一次（`auto_add_attempted`）；用户取消授权后保留覆盖层，不反复弹框。
+  需要重新触发时清应用数据，或手动从「小部件」里添加。
+- 4×1 小组件添加后会出现 `TYPE_WIDGET_RESIZE_FRAME`；控制器在 1.5s / 4s / 8s 后关闭，
+  避免时钟旁边残留调整框。
+- **覆盖层显隐不要用 pre-draw 轮询**：窗口静止时不会再有帧，删除小组件后覆盖层会一直
+  隐藏。现在由 `OneUiClockWidgetController` 的监听器在 `onWidgetsBound` /
+  `onWidgetsDeleted` 时直接通知 `OneUiClockView`。
+- 删除路径：长按小组件进入拖动 → 拖到顶部「移除」→ 松手；Launcher3 先显示可撤销
+  的「项目已移除」条，撤销窗口结束后才真正删除绑定并触发 `onDeleted`，此时覆盖层
+  恢复。点「撤销」会恢复小组件（系统可能分配新的 widget id），覆盖层再次隐藏。
 
-建议步骤：
-1. 新建 `lawnchair/src/app/lawnchair/widget/OneUiClockWidgetProvider.kt`（继承
-   `AppWidgetProvider`），提供 4 种布局（大时间 / 时间 + 日期 / 数字 / 极简）。
-2. 在 `lawnchair/res/xml/` 添加 `oneui_clock_widget_info.xml`（`appwidget-provider`），
-   设置 `minWidth/minHeight`、`resizeMode`、`updatePeriodMillis=0`。
-3. 在 `lawnchair/AndroidManifest.xml` 注册 receiver 与 `<meta-data>`。
-4. `default_workspace_4x6.xml` 第 0 行改成 `<appwidget>`，指向该 provider。
-5. 删除 `launcher.xml` 的 `oneui_clock` 覆盖层，确认长按/拖拽不再被挡。
+后续扩展：配置 Activity + 4 套 RemoteViews（大时间 / 时间 + 日期 / 数字 / 极简），
+设置里选择样式后 `AppWidgetManager.updateAppWidget` 重建。
 
 ### 6.3 抽屉分组 + 排序
 
@@ -430,6 +439,8 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 - [ ] `:assembleLawnWithQuickstepGithubDebug` 成功，无新增 `error:`
 - [ ] 首屏 4×6、Dock 5、时钟时间/日期正常
+- [ ] 首次启动弹系统绑定框；允许后时钟为 4×1 小组件，可长按拖动、拖到「移除」删除
+- [ ] 删除小组件后覆盖层恢复（撤销条消失后），撤销操作可让小组件恢复并再次隐藏；无重复时钟、无 resize frame
 - [ ] 首页/第二页来回滑动时时钟跟随第一页移出/恢复，其他页面没有残影
 - [ ] 抽屉底部搜索胶囊：位置、圆角、提示文字、三点菜单
 - [ ] 三点菜单打开底部菜单；排序子页可进入/返回；设置行跳转设置页
@@ -483,6 +494,7 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 | 提交 | 内容 |
 | --- | --- |
+| `b8547d8` | 时钟：升级为 4×1 AppWidget |
 | `318cf35` | 动画：长按菜单改为 One UI 弹性展开 |
 | `9de5b20` | 文档：记录设置二级页整理 |
 | `0cfcc6d` | 设置：二级页顺序与中文文案整理 |

@@ -82,7 +82,7 @@ sesl    app.oneui.design.sesl（暂不启用）    —— 唯一允许 import SE
 | **桌面网格 4 列 × 6 行、Dock 5 位** | `lawnchair/res/xml/device_profiles.xml`（`4_by_6`）+ `PreferenceManager.kt` 默认值 |
 | **关闭独立 smartspace 首屏页** | `config_default_enable_smartspace = false` |
 | **关闭 Dock 上方搜索条** | `config_default_hotseat_mode = disabled` |
-| **首屏 One UI 时钟 / 日期（随页面滚动）** | `lawnchair/res/layout/launcher.xml`（`oneui_clock`）、`lawnchair/src/app/lawnchair/views/OneUiClockView.kt` |
+| **首屏 One UI 时钟 / 日期（4×1 AppWidget + 覆盖层回退）** | `lawnchair/src/app/lawnchair/oneui/OneUiClockWidgetProvider.kt`、`OneUiClockWidgetController.kt`、`lawnchair/res/layout/oneui_clock_widget.xml`、`lawnchair/res/layout/launcher.xml`（`oneui_clock`）、`lawnchair/src/app/lawnchair/views/OneUiClockView.kt` |
 | **首屏默认排布（4 图标 + 5 Dock）** | `lawnchair/res/xml/default_workspace_4x6.xml` |
 | **抽屉底部搜索栏 + 三点菜单** | `lawnchair/res/layout/search_container_all_apps.xml`、`AllAppsSearchInput.kt`、`ActivityAllAppsContainerView.java` |
 | **抽屉 One UI 底部菜单（排序 / 设置）** | `lawnchair/src/app/lawnchair/ui/popup/OneUiDrawerMenu.kt` |
@@ -117,25 +117,41 @@ One UI 手机首页是 4 列 × 6 行，Dock 5 个位置。Lawnchair 里网格�
 - DocumentsUI 的 `MAIN/LAUNCHER` 意图在本机无法解析（系统把它挂在 `APP_FILES` 分类下），
   必须用 `launcher:packageName` + `launcher:className` 显式组件。
 
-### 5.3 时钟覆盖层
+### 5.3 时钟：AppWidget + 覆盖层回退
 
-`lawnchair/res/layout/launcher.xml` 在 `DragLayer` 内、`Workspace` 之后放了一个
-`app.lawnchair.views.OneUiClockView`（`@id/oneui_clock`）：
+时钟现在是一个真正的主屏幕小组件（`OneUiClockWidgetProvider`），原自绘
+`OneUiClockView` 保留为回退层。
 
-- `TextClock` 44sp `sans-serif-light`，`HH:mm`，负字距，白字 + 柔和阴影。
-- 日期 `TextClock` 14sp，格式 `M月d日 EEEE`，直接输出中文星期。
-- `clickable=false` / `focusable=false` / `importantForAccessibility=no`，不抢长按和拖拽。
-- **随页面滚动**：`OneUiClockView` 在 `ViewTreeObserver.OnPreDrawListener` 里读取
-  `Workspace.getScrollX()`，用 `translationX = -scrollX` 把时钟钉在第一页上。
-  滑到第二页时时钟被推出屏幕，滑回第一页时再推回来；启动时如果直接恢复到非 0 页，
-  pre-draw 也会在首帧前把位置修正。
-- 用 pre-draw 而不是 `setOnScrollChangeListener`：实测后者的回调在页面切换时不可靠，
-  而 pre-draw 还能覆盖「attach 时 workspace 尚未 layout」的情况。
-- 因为挂在 `DragLayer` 而不是 `Workspace` 里，它还不是真正的页面子项：
-  长按不能选中/移除，样式也固定。要做成可移动、可换样式的时钟，需要真正的
-  AppWidget；但 `BIND_APPWIDGET` 是签名权限，侧载包绑定 `default_workspace` 里的
-  `<appwidget>` 会失败（见 [HANDOVER.md](./HANDOVER.md) §6.2）。当前是方案 B
-  （页面内自绘）的实现。
+**小组件**
+
+- `lawnchair/res/xml/oneui_clock_widget_info.xml`：4×1、`targetCellWidth/Height`、
+  `resizeMode=none`、`updatePeriodMillis=0`、无配置页。
+- `lawnchair/res/layout/oneui_clock_widget.xml`：44sp `sans-serif-light` 时间 +
+  14sp 中文日期；两个 `TextClock` 自己走时，所以不需要定时 `onUpdate`。
+- `OneUiClockWidgetProvider` 注册在 `lawnchair/AndroidManifest.xml`；`onUpdate`
+  写入 RemoteViews 并登记 widget id，`onDeleted` 注销 id。
+- `OneUiClockWidgetController` 在 `LawnchairLauncher.onResume` 里：
+  - 首次启动（`auto_add_attempted` 未记录）用 `Launcher.addPendingItem` 把 4×1
+    小组件落到第 0 页 (0,0)；
+  - `BIND_APPWIDGET` 由系统 `ACTION_APPWIDGET_BIND` 对话框授权，勾选「始终允许」
+    后只需确认一次；取消则保留覆盖层，不会自动重试；
+  - 绑定成功后关闭 `TYPE_WIDGET_RESIZE_FRAME`，避免 4×1 小组件显示调整框；
+  - 清理已经不存在于 `AppWidgetManager` 的 id。
+- 小组件可长按拖动、拖到「移除」删除，与普通 One UI 小组件一致。
+
+**回退覆盖层**
+
+- 首次绑定被取消、或用户删除小组件时，`launcher.xml` 里的 `oneui_clock`
+  继续显示 44sp 时间 + 14sp 日期，保证首屏永远有时钟。
+- 覆盖层通过 `OneUiClockWidgetController` 的状态回调切换 `GONE / VISIBLE`，
+  不再用 pre-draw 轮询：窗口静止时不会再有帧，轮询会漏掉删除事件。
+- 随页面滚动仍由 `OnPreDrawListener` 读取 `Workspace.getScrollX()` 实现
+  （`translationX = -scrollX`）；滑到第二页时移出屏幕，滑回第一页恢复。
+
+**已知限制**
+
+- 只有一种样式，没有 One UI 的 4 种时钟样式 / 配置页。
+- `BIND_APPWIDGET` 首次仍需用户确认一次；这是侧载应用无法绕过的系统限制。
 
 ### 5.4 关掉的两处 Lawnchair 默认 UI
 
@@ -383,6 +399,8 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 | 网格 | 4 列 × 6 行，Dock 5 位，DB 为 `launcher_6_4_5.db` |
 | 首屏 | 时钟 `13:17` + 日期 `10月27日 星期二`；第 1 行 4 图标；Dock 5 图标 |
 | 首屏翻页 | 临时增加第二页后左滑：时钟随第一页移出屏幕；右滑回第一页恢复；`OnPreDraw` 跟随中间帧 |
+| 时钟小组件 | 首次启动弹系统「是否允许创建微件」授权框；勾选「始终允许」后 4×1 小组件落到第 0 页 (0,0)，`dumpsys appwidget` 确认 provider 已托管 |
+| 时钟回退 | 长按小组件拖到「移除」后，撤销条消失时覆盖层恢复；点「撤销」则小组件恢复、覆盖层再次隐藏 |
 | 旧 UI 残留 | 无 AOSP 搜索条、无 smartspace「点击以设置」页 |
 | 抽屉 | 4 列网格、单行标签、squircle 图标；搜索胶囊停靠底部（48dp 高、24dp 圆角、左对齐「搜索」、右侧三点菜单） |
 | 抽屉键盘 | 点搜索框弹出键盘后，搜索栏保持在键盘上方，输入时胶囊背景不消失 |
@@ -414,7 +432,8 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 `settings-root.png`（设置首页）、`settings-home.png`（主屏幕设置）、
 `settings-app-drawer.png`（应用抽屉设置）、`settings-appearance.png`（图标与风格）、
 `settings-notifications.png`（通知页）、`settings-about.png`（关于页）、
-`anim-icon-press.png`（图标按压对比）、
+`anim-icon-press.png`（图标按压对比）、`clock-widget.png`（时钟 AppWidget）、
+`clock-widget-remove.png`（长按拖动移除）、
 `long-press.png`（长按菜单）、`recents.png`（最近任务）。
 
 ## 8. 下一步里程碑
@@ -425,10 +444,8 @@ adb shell cmd package set-home-activity com.oneui.desktop/app.lawnchair.Lawnchai
 4. ~~**抽屉分组 / 索引**：行内字母标题、右侧细灰索引条、拖动字母气泡、分组标题开关~~
    ✅ 已完成。剩余可选项：One UI 8.5 的窄居中搜索胶囊（只改宽度/外边距/圆角，
    不动停靠逻辑）。
-5. **时钟组件化**：把自绘覆盖层升级成真正的 AppWidget（`OneUiClockWidgetProvider` +
-   `<appwidget>` 默认布局），让它可移除、可换样式（One UI 有 4 种时钟样式）。
-   随页面滚动已由 `OneUiClockView` 完成；AppWidget 绑定仍受 `BIND_APPWIDGET`
-   签名权限限制（见 HANDOVER §6.2），需要先接绑定授权流程。
+5. ~~**时钟组件化**：4×1 AppWidget + 系统绑定授权 + 覆盖层回退~~ ✅ 已完成（§5.3）。
+   剩余可选项：One UI 的 4 种时钟样式与配置页。
 6. ~~**自定义排序**：模式（字母 / 自定义）+ 设置页拖拽调序 + SharedPreferences 持久化~~
    ✅ 已完成（§5.9）。剩余：按使用频率排序（需要接 `UsageStatsManager` 或
    Lawnchair 的 `PredictionProvider`），以及抽屉内直接长按拖拽。
