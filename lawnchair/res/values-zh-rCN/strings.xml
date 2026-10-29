@@ -77,6 +77,10 @@
     <string name="oneui_drawer_sort_back">返回</string>
     <string name="oneui_drawer_section_headers">字母分组标题</string>
     <string name="oneui_drawer_section_headers_description">在每个字母分组上方显示标题。关闭后与 One UI 原版一致，仅保留右侧索引条。</string>
+    <string name="oneui_drawer_drag_add_to_home">添加到主屏幕</string>
+    <string name="oneui_drawer_drag_added">已添加到主屏幕</string>
+    <string name="oneui_drawer_drag_alphabetical">当前为字母排序，切换为自定义排序后可调整应用顺序</string>
+    <string name="oneui_drawer_drag_no_space">主屏幕空间不足</string>
     <string name="oneui_clock_widget_description">One UI 时钟与日期小组件</string>
     <string name="oneui_clock_widget_name">时钟与日期</string>
     <string name="system_settings">系统设置</string>

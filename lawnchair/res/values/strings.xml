@@ -90,6 +90,10 @@
     <string name="oneui_drawer_sort_back">Back</string>
     <string name="oneui_drawer_section_headers">Alphabet section headers</string>
     <string name="oneui_drawer_section_headers_description">Show a letter above each group of apps. Turn off for the plain One UI grid, which only uses the right-hand index.</string>
+    <string name="oneui_drawer_drag_add_to_home">Add to Home screen</string>
+    <string name="oneui_drawer_drag_added">Added to Home screen</string>
+    <string name="oneui_drawer_drag_alphabetical">Switch the drawer to custom order to rearrange apps</string>
+    <string name="oneui_drawer_drag_no_space">Not enough room on the Home screen</string>
     <string name="oneui_clock_widget_description">One UI clock and date for the home screen</string>
     <string name="oneui_clock_widget_name">Clock &amp; date</string>
     <string name="system_settings">System settings</string>

@@ -56,3 +56,11 @@ src/com/android/launcher3/allapps/AllAppsTransitionController.java
 src/com/android/launcher3/popup/ArrowPopup.java
 src/com/android/launcher3/allapps/FloatingHeaderView.java
 tools/fetch-sesl.ps1
+lawnchair/src/app/lawnchair/oneui/drawer/OneUiDrawerDragOverlay.kt
+lawnchair/src/app/lawnchair/LawnchairLauncher.kt
+lawnchair/src/app/lawnchair/allapps/LawnchairAlphabeticalAppsList.kt
+src/com/android/launcher3/touch/ItemLongClickListener.java
+src/com/android/launcher3/Workspace.java
+src/com/android/launcher3/dragndrop/DragOptions.java
+src/com/android/launcher3/dragndrop/LauncherDragController.java
+src/com/android/launcher3/dragndrop/LauncherDragView.java

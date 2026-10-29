@@ -484,3 +484,18 @@ One UI 的改动被刻意收在十几个文件里（见 `tools/oneui-overlay.txt
 
 - `origin`   `https://github.com/a435630144/OneUILauncher.git`
 - `upstream` `https://github.com/LawnchairLauncher/lawnchair.git`（只作参照）
+
+## 10. 抽屉拖拽编辑模式
+
+- 入口：`ItemLongClickListener.onAllAppsItemLongClick` → `newDragOptions` 设
+  `DragOptions.isDrawerDrag`（`LawnchairLauncher` 且非搜索态）。
+  `Workspace` 在 drag 起手 / 结束时跳过常规 workspace 处理。
+- 视觉与落点由 `OneUiDrawerDragOverlay`（DragLayer 全屏覆盖层 = DropTarget +
+  DragListener）负责：压暗背景、网格缩放 0.84 卡片、点阵 + 白描边落点、
+  左右边缘按页滚动、卡片外上下空白区投放主屏（`Workspace.addAppFromDrawer`）。
+- 重排落库：`LawnchairAlphabeticalAppsList.moveAppInCustomOrder` 写
+  `pref_drawerCustomOrder` 后 `onAppsUpdated()` 即时刷新。
+- K2 注意：Java raw `DragView` 参数在 Kotlin 声明处需写 `DragView<Launcher>`，
+  否则报 "One type argument expected"。
+
+- `upstream` `https://github.com/LawnchairLauncher/lawnchair.git`（只作参照）

@@ -281,3 +281,36 @@
 - `HANDOVER.md` 更新 §1/§2/§3.1/§4/§6.2/§7。
 - `README.md` 功能列表与目录结构同步。
 - `tools/oneui-overlay.txt` 增加时钟相关新文件。
+
+## v0.20 — 抽屉拖拽编辑模式（2026-10-30）
+
+**功能**
+
+- 新增 `OneUiDrawerDragOverlay`（DragLayer 上的全屏覆盖层，同时是 DropTarget 与
+  DragListener）：长按抽屉图标即进入 One UI 拖拽编辑模式，抽屉保持打开。
+- **编辑态视觉**（对照真机截图）：背景压暗，应用网格缩放为 0.84 的圆角卡片悬浮，
+  搜索胶囊淡出；网格交叉点绘制定位小点，落点格子绘制白色圆角描边；卡片下方显示
+  页点 + 「+」提示。
+- **落点语义**（对齐 One UI 真机）：
+  - 卡片内：最近格显示描边预览，松手按自定义顺序移到目标应用旁（字母模式下
+    Toast 提示需切换自定义排序）；
+  - 卡片左右边缘 48dp：像翻页一样按页滚动列表；
+  - 卡片**上方/下方空白区**：松手把应用加到主屏幕第一个空格（`Workspace.addAppFromDrawer`，
+    Toast 反馈，空间不足提示）。
+- 框架接入：`ItemLongClickListener.onAllAppsItemLongClick` 通过 `newDragOptions` 设置
+  `DragOptions.isDrawerDrag`（搜索态关闭）；`Workspace` 跳过常规 drag 起手并在
+  `onDragEnd` 提前返回；`LauncherDragView` 在 ALL_APPS 态保持拖拽浮层可见。
+- 挂载：`LawnchairLauncher.setupOneUiDrawerDragOverlay()` 把 overlay 加入 DragLayer，
+  注册 DragListener 与 DropTarget。
+
+**验证**
+
+- `:assembleLawnWithQuickstepGithubDebug` 构建通过。
+- 真机交互比对基准：One UI 真机截图（抽屉拖动页：缩放卡片 + 格点 + 描边 + 分页页点）。
+- 交互手势（长按进入、上下空白投放）待真机实测。
+
+**文档**
+
+- `HANDOVER.md` 更新 §2 完成表、新增 §3.10 实现要点、§6.3 剩余项收敛、§10 最近提交。
+- `ARCHITECTURE.md` 新增拖拽编辑模式小节。
+- `tools/oneui-overlay.txt` 增加 `oneui/drawer/OneUiDrawerDragOverlay.kt` 与框架改动。

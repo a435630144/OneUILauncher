@@ -14,6 +14,8 @@
 **One UI 底部菜单**、**字母分组标题**、**右侧索引条**、**自定义排序**全部完成。
 设置首页已改成四张 One UI 卡片，通知独立成页，「关于」页改成图标 + 版本 + 法律信息卡。
 动画方面图标按压改成 0.92 缩小、抽屉打开时网格行级错落归位、长按菜单弹性展开。
+**抽屉拖拽编辑模式完成**：长按图标进入编辑态（背景压暗、网格缩放卡片、格点 +
+描边预览），卡片内拖动重排、左右边缘翻页、上下空白区投放主屏。
 下一步是抽屉背景模糊、页面切换视差，以及 One UI 时钟的 4 种样式 / 配置页。
 
 当前 APK：
@@ -301,6 +303,29 @@ Material You 弹窗默认开启，动画参数集中在 `ArrowPopup`：
 模拟器上 240ms 的展开很难用单帧截图判断，调参数后重点确认菜单能正常打开、
 点击、关闭，以及连续快速开关不残留半透明视图。
 
+### 3.10 抽屉拖拽编辑模式
+
+对照真机截图（抽屉拖动页：缩放卡片 + 格点 + 描边 + 分页页点）实现，入口
+`ItemLongClickListener.onAllAppsItemLongClick` → `newDragOptions`（搜索态关闭）
+→ `DragOptions.isDrawerDrag = true`。核心类 `lawnchair/src/app/lawnchair/oneui/drawer/
+OneUiDrawerDragOverlay.kt`，由 `LawnchairLauncher.setupOneUiDrawerDragOverlay()`
+挂到 DragLayer 并注册 DragListener + DropTarget。
+
+- **编辑态视觉**：拖起时背景压暗（90/255 黑）、应用网格缩放 0.84 成圆角卡片
+  （`activeRecyclerView.animate()`，180ms）、搜索胶囊淡出（`search_container_all_apps`
+  alpha 0）；网格交叉点画定位小点（1.4dp，去重），落点格 2dp 白描边 18dp 圆角，
+  卡片下方画页点 + 「+」。
+- **落点语义**：卡片内 = 最近格预览，松手 `LawnchairAlphabeticalAppsList
+  .moveAppInCustomOrder` 移到目标应用旁（字母模式 Toast 引导切换）；卡片左右
+  48dp = 按页滚动（420ms 步进）；卡片**外**（上/下空白区）= 「添加到主屏幕」，
+  `Workspace.addAppFromDrawer` 放第一个空格（Toast 反馈 / 空间不足提示）。
+- **框架协作**：`Workspace.onDragStart` 遇 `isDrawerDrag` 跳过常规起手（不切
+  SPRING_LOADED），`onDragEnd` 提前返回；`LauncherDragView.onStateTransitionComplete`
+  在 ALL_APPS 态保持拖拽浮层可见；drop 时 `DragView` 需显式 `as DragView<Launcher>`
+  （K2 下 raw `DragView` 参数声明会报 "One type argument expected"）。
+- 落位动画：重排走 `DragLayer.animateViewIntoPosition`（180ms），加到主屏走淡出，
+  失败回飞 `animateDragViewToOriginalPosition`。
+
 ---
 
 ## 4. 已知问题 / 风险
@@ -311,7 +336,7 @@ Material You 弹窗默认开启，动画参数集中在 `ArrowPopup`：
 | 模拟器偶尔退出 | 验证中断 | 用 `-no-window -no-snapshot -gpu off` 启动；截图用 `adb shell screencap` + `adb pull`（PowerShell 5.1 不要用 `>` 重定向二进制）；必要时重启 AVD |
 | 时钟只有一种样式 | 4×1 AppWidget 已可长按移除，但没有 One UI 的 4 种时钟样式 / 配置页 | 后续加配置 Activity 与多套 RemoteViews；覆盖层与 AppWidget 保持同款默认样式 |
 | 首次绑定需系统确认 | 侧载应用受 `BIND_APPWIDGET` 限制，首次启动会弹「是否允许创建微件」 | 勾选「始终允许」即可；取消后覆盖层继续显示，不会自动重试 |
-| 抽屉三点菜单 | 已改为 One UI 底部菜单（排序 / 设置），排序支持字母 / 自定义两种模式 | 排序编辑器在设置页，抽屉内暂不支持长按拖拽（见 §3.5 / §6.3） |
+| 抽屉三点菜单 | 已改为 One UI 底部菜单（排序 / 设置），排序支持字母 / 自定义两种模式 | 排序编辑器在设置页；抽屉内长按拖拽已实现（见 §3.10） |
 | 自定义排序覆盖范围 | 只对主用户的应用生效；工作资料 / 私密空间仍走 AOSP 顺序 | 多资料场景后续再扩展，当前不影响主用户 |
 | 使用频率排序 | 尚未实现，只有字母 / 自定义 | 需要接 `UsageStatsManager` 或 `PredictionProvider` 的排序信号 |
 | 抽屉分组与 One UI 不一致 | 行内字母标题默认开启，与 One UI 7 原版不同 | 设置 → 应用抽屉 → 网格里有「字母分组标题」开关，关掉即只剩右侧索引 |
@@ -409,7 +434,7 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - **自定义排序（已完成）**：字母 / 自定义两种模式，顺序存在
   `pref_drawerCustomOrder`，在设置页用 `ReorderablePreferenceGroup` 拖拽编辑
   （§3.5）。抽屉菜单可直接切模式并跳到编辑器；切换后列表即时刷新。
-  剩余：使用频率排序、抽屉内直接长按拖拽、工作资料 / 私密空间的自定义顺序。
+  剩余：使用频率排序、工作资料 / 私密空间的自定义顺序；抽屉内长按拖拽已实现（§3.10），待真机实测。
 - 底部菜单主入口已经完成，后续只补「搜索设置」等 One UI 8.5 菜单项。
 
 ### 6.4 设置页 One UI 化
