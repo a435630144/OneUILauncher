@@ -314,3 +314,27 @@
 - `HANDOVER.md` 更新 §2 完成表、新增 §3.10 实现要点、§6.3 剩余项收敛、§10 最近提交。
 - `ARCHITECTURE.md` 新增拖拽编辑模式小节。
 - `tools/oneui-overlay.txt` 增加 `oneui/drawer/OneUiDrawerDragOverlay.kt` 与框架改动。
+
+## v0.21 — 抽屉拖拽改为真分页网格（2026-10-30）
+
+**修正**（真机实测反馈：拖到左右边缘只是滚动，不会创建/切换分页）
+
+- 拖拽编辑模式不再挂在滚动列表上：拖起时整体接管（`appsView` 隐藏），
+  `OneUiDrawerDragOverlay` 自绘**分页网格卡片**——当前页 + 左右邻页边缘预览、
+  格点、落点白描边、页点 + 「+」。
+- **翻页**：拖到卡片左右 52dp 边缘带停留即翻页（340ms 步进），拖过最后一页
+  右边缘**自动创建新分页**（页点随页数增长），图标放进新页任意格即追加。
+- **落位**：卡片内格位 → 按自定义顺序移到目标位置（提交
+  `pref_drawerCustomOrder`）；卡片外上/下空白区 → 加入主屏幕
+  （`Workspace.addAppFromDrawer`）。字母模式拖起时自动切换为自定义排序
+  （当前显示顺序作为初始顺序，与 One UI 一致）。
+- 图标绘制走 `AppInfo.bitmap.newIcon`，标签单行裁剪；翻页 200ms 缓动。
+
+**验证**
+
+- `:assembleLawnWithQuickstepGithubDebug` 构建通过。
+- 翻页/建页/落位待真机实测（编辑态视觉上一版已确认）。
+
+**文档**
+
+- `HANDOVER.md` §1/§3.10、`tools/oneui-overlay.txt` 同步。
