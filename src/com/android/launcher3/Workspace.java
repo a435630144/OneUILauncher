@@ -101,6 +101,7 @@ import com.android.launcher3.logger.LauncherAtom;
 import com.android.launcher3.logging.InstanceId;
 import com.android.launcher3.logging.StatsLogManager;
 import com.android.launcher3.logging.StatsLogManager.LauncherEvent;
+import com.android.launcher3.model.data.AppInfo;
 import com.android.launcher3.model.data.AppPairInfo;
 import com.android.launcher3.model.data.FolderInfo;
 import com.android.launcher3.model.data.ItemInfo;
@@ -207,6 +208,11 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
      * CellInfo for the cell that is currently being dragged
      */
     protected CellInfo mDragInfo;
+
+    /**
+     * Whether the current drag was started from the app drawer and keeps the drawer open.
+     */
+    private boolean mIsDrawerDrag = false;
 
     /**
      * Target drop area calculated during last acceptDrop call.
@@ -533,6 +539,16 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
         updateChildrenLayersEnabled();
 
+        mIsDrawerDrag = options.isDrawerDrag;
+        if (mIsDrawerDrag) {
+            // The item lives in the app drawer and not on the workspace: keep the drawer open
+            // and let the drawer drop target handle reordering / adding to home.
+            mStatsLogManager.logger().withItemInfo(dragObject.dragInfo)
+                    .withInstanceId(dragObject.logInstanceId)
+                    .log(LauncherEvent.LAUNCHER_ITEM_DRAG_STARTED);
+            return;
+        }
+
         // Do not add a new page if it is a accessible drag which was not started by the
         // workspace.
         // We do not support accessibility drag from other sources and instead provide a
@@ -586,6 +602,13 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     public void onDragEnd() {
         if (ENFORCE_DRAG_EVENT_ORDER) {
             enforceDragParity("onDragEnd", 0, 0);
+        }
+
+        if (mIsDrawerDrag) {
+            mIsDrawerDrag = false;
+            mDragInfo = null;
+            mDragSourceInternal = null;
+            return;
         }
 
         updateChildrenLayersEnabled();
@@ -2445,6 +2468,56 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             };
         }
         return null;
+    }
+
+    /**
+     * Adds an app from the app drawer to the first free cell of the workspace without leaving
+     * the current launcher state (the drawer stays open).
+     *
+     * @return the newly created icon, or {@code null} when the workspace is full.
+     */
+    @Nullable
+    public View addAppFromDrawer(AppInfo appInfo) {
+        if (mLauncher.isWorkspaceLocked()) {
+            return null;
+        }
+        final int pageCount = getPageCount();
+        final int currentPage = getCurrentPage();
+        final int[] cellXY = new int[2];
+        int targetPage = -1;
+        int targetScreenId = -1;
+        // Prefer the current page, then scan the remaining pages.
+        for (int i = 0; i < pageCount; i++) {
+            int pageIndex = (currentPage + i) % pageCount;
+            int screenId = getScreenIdForPageIndex(pageIndex);
+            if (EXTRA_EMPTY_SCREEN_IDS.contains(screenId)) {
+                continue;
+            }
+            CellLayout layout = (CellLayout) getPageAt(pageIndex);
+            if (layout != null && layout.findCellForSpan(cellXY, 1, 1)) {
+                targetPage = pageIndex;
+                targetScreenId = screenId;
+                break;
+            }
+        }
+        if (targetPage < 0) {
+            return null;
+        }
+
+        CellLayout layout = (CellLayout) getPageAt(targetPage);
+        View view = mLauncher.getItemInflater()
+                .inflateItem(appInfo, mLauncher.getModelWriter(), layout);
+        if (view == null || !(view.getTag() instanceof ItemInfo)) {
+            return null;
+        }
+        ItemInfo info = (ItemInfo) view.getTag();
+        mLauncher.getModelWriter().addItemToDatabase(info,
+                LauncherSettings.Favorites.CONTAINER_DESKTOP, targetScreenId,
+                cellXY[0], cellXY[1]);
+        addInScreen(view, info);
+        layout.onDropChild(view);
+        layout.getShortcutsAndWidgets().measureChild(view);
+        return view;
     }
 
     public void onNoCellFound(

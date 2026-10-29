@@ -29,6 +29,7 @@ import android.graphics.Rect;
 import android.view.View;
 import android.view.View.OnLongClickListener;
 
+import app.lawnchair.LawnchairLauncher;
 import com.android.launcher3.DragSource;
 import com.android.launcher3.DropTarget;
 import com.android.launcher3.Launcher;
@@ -174,8 +175,18 @@ public class ItemLongClickListener {
             }
         });
 
-        launcher.getWorkspace().beginDragShared(v, launcher.getAppsView(), new DragOptions());
+        launcher.getWorkspace().beginDragShared(v, launcher.getAppsView(), newDragOptions(launcher));
         return false;
+    }
+
+    /**
+     * Drag options for an all-apps icon. When the One UI drawer drag overlay is active the drag
+     * stays inside the drawer: the overlay handles reordering and the add-to-home drop zones.
+     */
+    private static DragOptions newDragOptions(Launcher launcher) {
+        DragOptions options = new DragOptions();
+        options.isDrawerDrag = launcher instanceof LawnchairLauncher && !launcher.getAppsView().isSearching();
+        return options;
     }
 
     public static boolean canStartDrag(Launcher launcher) {

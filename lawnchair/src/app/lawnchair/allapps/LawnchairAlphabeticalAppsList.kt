@@ -16,6 +16,7 @@ import com.android.launcher3.InvariantDeviceProfile.OnIDPChangeListener
 import com.android.launcher3.allapps.AllAppsStore
 import com.android.launcher3.allapps.AlphabeticalAppsList
 import com.android.launcher3.allapps.AlphabeticalAppsList.FastScrollSectionInfo
+import com.android.launcher3.allapps.BaseAllAppsAdapter
 import com.android.launcher3.allapps.BaseAllAppsAdapter.AdapterItem
 import com.android.launcher3.allapps.PrivateProfileManager
 import com.android.launcher3.allapps.WorkProfileManager
@@ -206,5 +207,33 @@ class LawnchairAlphabeticalAppsList<T>(
     companion object {
         const val SORT_ALPHABETICAL = "alphabetical"
         const val SORT_CUSTOM = "custom"
+    }
+
+    /**
+     * Moves [dragged] next to [target] in the custom drawer order and refreshes the list.
+     *
+     * @return false when custom sorting is not active or the apps cannot be found.
+     */
+    fun moveAppInCustomOrder(dragged: AppInfo, target: AppInfo, insertAfter: Boolean): Boolean {
+        if (prefs.drawerSortMode.get() != SORT_CUSTOM) return false
+        val draggedKey = dragged.toComponentKey().toString()
+        val targetKey = target.toComponentKey().toString()
+        if (draggedKey == targetKey) return false
+
+        val keys = adapterItems
+            .asSequence()
+            .filter { it.viewType == BaseAllAppsAdapter.VIEW_TYPE_ICON }
+            .mapNotNull { it.itemInfo?.toComponentKey()?.toString() }
+            .toMutableList()
+        val from = keys.indexOf(draggedKey)
+        if (from < 0) return false
+        keys.removeAt(from)
+        val targetIndex = keys.indexOf(targetKey)
+        if (targetIndex < 0) return false
+
+        keys.add(if (insertAfter) targetIndex + 1 else targetIndex, draggedKey)
+        prefs.drawerCustomOrder.set(keys.joinToString("\n"))
+        onAppsUpdated()
+        return true
     }
 }

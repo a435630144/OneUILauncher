@@ -27,6 +27,7 @@ import android.os.Bundle
 import android.util.Pair
 import android.view.Display
 import android.view.View
+import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.window.SplashScreen
 import androidx.activity.SystemBarStyle
@@ -44,6 +45,7 @@ import app.lawnchair.gestures.VerticalSwipeTouchController
 import app.lawnchair.gestures.config.GestureHandlerConfig
 import app.lawnchair.nexuslauncher.OverlayCallbackImpl
 import app.lawnchair.oneui.OneUiClockWidgetController
+import app.lawnchair.oneui.drawer.OneUiDrawerDragOverlay
 import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.preferences2.PreferenceManager2
 import app.lawnchair.root.RootHelperManager
@@ -96,6 +98,7 @@ import kotlinx.coroutines.launch
 
 class LawnchairLauncher : QuickstepLauncher() {
     private val defaultOverlay by unsafeLazy { OverlayCallbackImpl(this) }
+    private val overlayDrawerDrag by unsafeLazy { OneUiDrawerDragOverlay(this) }
     private val prefs by unsafeLazy { PreferenceManager.getInstance(this) }
     private val preferenceManager2 by unsafeLazy { PreferenceManager2.getInstance(this) }
     private val insetsController by unsafeLazy { WindowInsetsControllerCompat(launcher.window, rootView) }
@@ -253,6 +256,22 @@ class LawnchairLauncher : QuickstepLauncher() {
         reloadIconsIfNeeded()
 
         AppDatabase.INSTANCE.get(this).checkpointSync()
+
+        setupOneUiDrawerDragOverlay()
+    }
+
+    /**
+     * Mounts the One UI drawer drag overlay: it dims the drawer, shrinks the app grid into an
+     * edit-mode card, draws the dot grid / landing outline and owns the add-to-home drop zones.
+     */
+    private fun setupOneUiDrawerDragOverlay() {
+        dragLayer.addView(
+            overlayDrawerDrag,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
+        dragController.addDragListener(overlayDrawerDrag)
+        dragController.addDropTarget(overlayDrawerDrag)
     }
 
     override fun collectStateHandlers(out: MutableList<StateHandler<LauncherState>>) {

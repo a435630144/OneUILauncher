@@ -46,6 +46,7 @@ public class LauncherDragController extends DragController<Launcher> {
 
     private static final boolean PROFILE_DRAWING_DURING_DRAG = false;
     private final FlingToDeleteHelper mFlingToDeleteHelper;
+    private boolean mIsDrawerDrag = false;
 
     public LauncherDragController(Launcher launcher) {
         super(launcher);
@@ -73,6 +74,7 @@ public class LauncherDragController extends DragController<Launcher> {
         AbstractFloatingView.closeOpenViews(mActivity, false, TYPE_DISCOVERY_BOUNCE);
 
         mOptions = options;
+        mIsDrawerDrag = options.isDrawerDrag;
         if (mOptions.simulatedDndStartPoint != null) {
             mLastTouch.x = mMotionDown.x = mOptions.simulatedDndStartPoint.x;
             mLastTouch.y = mMotionDown.y = mOptions.simulatedDndStartPoint.y;
@@ -188,13 +190,18 @@ public class LauncherDragController extends DragController<Launcher> {
 
     @Override
     protected void exitDrag() {
-        if (!mActivity.isInState(EDIT_MODE)) {
+        // A drawer drag never leaves the all-apps state, so there is no spring-loaded mode to
+        // exit even when the drop is rejected.
+        if (!mIsDrawerDrag && !mActivity.isInState(EDIT_MODE)) {
             mActivity.getStateManager().goToState(NORMAL, SPRING_LOADED_EXIT_DELAY);
         }
     }
 
     @Override
     protected boolean endWithFlingAnimation() {
+        if (mIsDrawerDrag) {
+            return false;
+        }
         Runnable flingAnimation = mFlingToDeleteHelper.getFlingAnimation(mDragObject, mOptions);
         if (flingAnimation != null) {
             drop(mFlingToDeleteHelper.getDropTarget(), flingAnimation);
@@ -206,6 +213,7 @@ public class LauncherDragController extends DragController<Launcher> {
     @Override
     protected void endDrag() {
         super.endDrag();
+        mIsDrawerDrag = false;
         mFlingToDeleteHelper.releaseVelocityTracker();
     }
 

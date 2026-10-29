@@ -32,6 +32,12 @@ public class DragOptions {
     public boolean isKeyboardDrag = false;
 
     /**
+     * Whether this drag was started from the app drawer. The drawer stays open for the whole
+     * drag and the drawer itself handles the drop.
+     */
+    public boolean isDrawerDrag = false;
+
+    /**
      * Specifies the start location for a simulated DnD (like system drag or accessibility drag),
      * null when using internal DnD
      */
