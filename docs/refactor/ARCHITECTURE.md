@@ -44,7 +44,7 @@ E:\OneDrive\家里台式\桌面\temp\OneUi_Desktop
 │   ├── layout/launcher.xml                       首屏根布局（含 One UI 时钟）
 │   └── xml/default_workspace_4x6.xml             首屏默认图标排布
 ├── docs/refactor/            架构 / SESL 决策 / 验证截图
-├── legacy/                   v0.6 Compose 实现（参考用，不参与构建）
+├── docs/refactor/            架构 / 交接 / SESL 决策 / 验证截图
 └── build.gradle              单模块：根工程就是 app
 ```
 

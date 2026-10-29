@@ -68,7 +68,6 @@ lawnchair/res/       One UI 资源覆盖（优先级高于 res/）
   xml/default_workspace_4x6.xml    首屏默认排布
   xml/device_profiles.xml          4x6 / 5 Dock 网格定义
 docs/refactor/       架构、SESL 决策、交接文档、验证截图
-legacy/              v0.6 Compose 实现（保留作参考，不参与当前构建）
 ```
 
 资源合并优先级：`lawnchair/res` > `res`。One UI 的覆盖统一写在 `lawnchair/res`，
@@ -76,8 +75,9 @@ legacy/              v0.6 Compose 实现（保留作参考，不参与当前构�
 
 ## 旧版
 
-`legacy/` 是 v0.6 的 Jetpack Compose 实现，包含自定义排序、主屏多页、文件夹、
-角标等完整交互，作为后续移植的参考。它不参与当前 Gradle 构建。
+v0.6 及之前的 Jetpack Compose 自研实现已整体移除（其全部功能均已移植到
+Lawnchair 基线），完整源码保留在 git 历史中：`git show 3cd6f19:app/src/main/java/com/example/oneuidesktop/MainActivity.kt`
+（或 `git checkout 3cd6f19 -- legacy/` 整目录检出）。
 
 ## 许可
 

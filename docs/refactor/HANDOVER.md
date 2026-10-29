@@ -34,7 +34,7 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 
 | 模块 | 内容 | 关键文件 |
 | --- | --- | --- |
-| 仓库 | Lawnchair 15-dev 快照并入根目录，旧 Compose v0.6 移入 `legacy/` | `README.md`、`NOTICE`、`tools/oneui-overlay.txt` |
+| 仓库 | Lawnchair 15-dev 快照并入根目录，旧 Compose v0.6 曾移入 `legacy/`（v0.21 清理移除，源码在 git 历史 `3cd6f19`） | `README.md`、`NOTICE`、`tools/oneui-overlay.txt` |
 | 构建 | 单模块 Gradle，`platform_frameworks_libs_systemui` 随仓库分发，clone 后可离线构建 | `build.gradle`、`gradle.properties` |
 | 应用身份 | `com.oneui.desktop`、显示名「OneUI 桌面」、无 `.debug` 后缀 | `build.gradle` |
 | 网格 | 4 列 × 6 行、Dock 5 位，DB 名 `launcher_6_4_5.db` | `device_profiles.xml`、`PreferenceManager.kt` |

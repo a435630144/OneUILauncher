@@ -1,6 +1,7 @@
 # 开发日志
 
-> v0.1–v0.6 的 Compose 版开发记录已移到 [legacy/CHANGELOG.md](legacy/CHANGELOG.md)。
+> v0.1–v0.6 的 Compose 版开发记录见 git 历史提交 `3cd6f19`
+> （`git show 3cd6f19:legacy/CHANGELOG.md`；legacy 目录已随 v0.21 项目清理移除）。
 
 ## v0.7 — 迁移到 Lawnchair 15 + One UI 设计层（2026-10-26）
 
@@ -9,7 +10,8 @@
 - 底层换成 Lawnchair 15（Launcher3 / Android 15，Apache-2.0），保留 Quickstep。
 - 新增 `core / design / sesl` 三层约定：`core` 只负责行为，`design` 只负责外观，
   `sesl` 为可选适配层。第一阶段不引入 SESL 构建依赖，避免与 AndroidX 同包名冲突。
-- 旧 Compose 实现整体移入 `legacy/`，保留作功能移植参考。
+- 旧 Compose 实现整体移入 `legacy/`（v0.21 项目清理时移除，功能已全部移植，
+  源码在 git 历史提交 `3cd6f19` 中）。
 
 **首屏**
 
