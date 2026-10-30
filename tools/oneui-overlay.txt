@@ -64,3 +64,6 @@ src/com/android/launcher3/Workspace.java
 src/com/android/launcher3/dragndrop/DragOptions.java
 src/com/android/launcher3/dragndrop/LauncherDragController.java
 src/com/android/launcher3/dragndrop/LauncherDragView.java
+lawnchair/res/layout/oneui_clock_widget_compact.xml
+lawnchair/res/layout/oneui_clock_widget_time_only.xml
+lawnchair/res/layout/oneui_clock_widget_centered.xml
