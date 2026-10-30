@@ -340,3 +340,39 @@
 **文档**
 
 - `HANDOVER.md` §1/§3.10、`tools/oneui-overlay.txt` 同步。
+
+## v0.22 — 时钟四种样式 + 拖拽菜单 + 抽屉背景模糊（2026-10-31）
+
+**功能**
+
+- **时钟四种样式**（对照 One UI 主屏幕设置）：默认（44sp 时间+日期）/ 紧凑（30sp
+  时间+日期同行）/ 仅时间（64sp 细体）/ 居中（日期上、38sp 时间下）。四套
+  RemoteViews 布局 + `pref_clockStyle` 持久化；设置 → 主屏幕新增「时钟样式」组，
+  四行可点选（当前项带"当前样式"副标题），切换即时通过
+  `OneUiClockWidgetController.applyStyleToWidgets` 刷新全部已绑定小组件。
+  覆盖层回退保持默认样式（仅在小组件未绑定的短暂窗口可见）。
+- **拖拽 One UI 菜单**（对照真机长按浮窗）：拖起图标即弹出白色圆角菜单
+  （应用名标题 + ℹ️ 应用信息 + 「添加至主屏幕」/「卸载」），移动超过 8dp 菜单
+  收起、进入纯拖拽；「添加至主屏幕」落第一个空格并 Toast 反馈。纯代码构建
+  UI（绕开 inflate/R 常量的 AAPT 环节）。
+- **抽屉背景模糊**：抽屉展开时对 Workspace 应用 `RenderEffect.createBlurEffect`
+  （半径随展开程度 0→24f 插值，API 31+，低于 31 降级为不模糊）。挂在
+  `AllAppsTransitionController.setProgress`，半径变化超 1f 才重建 RenderEffect，
+  避免每帧开销。
+
+**构建**
+
+- 根 `build.gradle` 短暂把输出重定向到 D 盘后又回滚：KSP/protobuf 与项目源码
+  跨盘符时 relativize 报 "different roots"。OneDrive 占位符问题的正解是构建前
+  清理 `build/tmp` 受影响的文件，或在 OneDrive 设置中排除 `build` 文件夹。
+
+**验证**
+
+- `:assembleLawnWithQuickstepGithubDebug` 构建通过（K2 修复：Java 基类继承需
+  显式 `AppWidgetProvider()`、`DragView<Launcher>` 泛型显式化、
+  `setMargins` 链式改 `apply`）。
+- 时钟样式切换、拖拽菜单、模糊效果待真机实测。
+
+**文档**
+
+- `HANDOVER.md`/`tools/oneui-overlay.txt` 同步新文件与设置入口。

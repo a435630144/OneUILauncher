@@ -306,26 +306,36 @@ Material You 弹窗默认开启，动画参数集中在 `ArrowPopup`：
 
 ### 3.10 抽屉拖拽编辑模式
 
-对照真机截图（抽屉拖动页：缩放卡片 + 格点 + 描边 + 分页页点）实现，入口
+对照真机截图（抽屉拖动页：分页网格 + 定位点 + 描边 + 页点）实现，入口
 `ItemLongClickListener.onAllAppsItemLongClick` → `newDragOptions`（搜索态关闭）
 → `DragOptions.isDrawerDrag = true`。核心类 `lawnchair/src/app/lawnchair/oneui/drawer/
 OneUiDrawerDragOverlay.kt`，由 `LawnchairLauncher.setupOneUiDrawerDragOverlay()`
 挂到 DragLayer 并注册 DragListener + DropTarget。
 
-- **编辑态视觉**：拖起时背景压暗（90/255 黑）、应用网格缩放 0.84 成圆角卡片
-  （`activeRecyclerView.animate()`，180ms）、搜索胶囊淡出（`search_container_all_apps`
-  alpha 0）；网格交叉点画定位小点（1.4dp，去重），落点格 2dp 白描边 18dp 圆角，
-  卡片下方画页点 + 「+」。
-- **落点语义**：卡片内 = 最近格预览，松手 `LawnchairAlphabeticalAppsList
-  .moveAppInCustomOrder` 移到目标应用旁（字母模式 Toast 引导切换）；卡片左右
-  48dp = 按页滚动（420ms 步进）；卡片**外**（上/下空白区）= 「添加到主屏幕」，
-  `Workspace.addAppFromDrawer` 放第一个空格（Toast 反馈 / 空间不足提示）。
+- **接管**：拖起时 `appsView.visibility = INVISIBLE`（搜索胶囊一起隐藏），
+  overlay 自绘深色 scrim、当前页网格、邻页边缘条、页点与「+」；`onDragEnd`
+  恢复抽屉。抽屉本身不再缩放，也不再保留半透明列表。
+- **网格**：4×6 = 24 格/页，`cardRect` 左右 6.3%、上 9.2%、下 83.6%；定位点是
+  列分界 × 行分界的方形小点（0.9dp，白 70 alpha）。图标 `min(0.64×格宽,
+  0.52×格高)`，标签 12sp；落点描边 `iconSize + 10dp`、白 200 alpha。
+- **分页**：只使用已安装应用的紧凑顺序，24 个/页，不创建空页。拖到卡片左右
+  36dp 边缘带停留 380ms 翻页，之后每 420ms 连续翻页（220ms 过渡）。
+- **落位**：落在哪个格就占哪个格（`removeAt` + `add(targetIndex)`，其余顺移），
+  松手才写 `pref_drawerCustomOrder`；字母排序下重排会自动切到 custom，
+  Toast「已切换为自定义排序」。顺序没变则不写盘、不弹提示。
+- **添加到主屏幕**：卡片上方/下方空白区，`Workspace.addAppFromDrawer` 从当前页
+  找第一个 1×1 空格，Toast「已添加到主屏幕 / 空间不足」；应用仍留在抽屉。
 - **框架协作**：`Workspace.onDragStart` 遇 `isDrawerDrag` 跳过常规起手（不切
-  SPRING_LOADED），`onDragEnd` 提前返回；`LauncherDragView.onStateTransitionComplete`
-  在 ALL_APPS 态保持拖拽浮层可见；drop 时 `DragView` 需显式 `as DragView<Launcher>`
-  （K2 下 raw `DragView` 参数声明会报 "One type argument expected"）。
-- 落位动画：重排走 `DragLayer.animateViewIntoPosition`（180ms），加到主屏走淡出，
-  失败回飞 `animateDragViewToOriginalPosition`。
+  SPRING_LOADED），`onDragEnd` 提前返回；`LauncherDragController` 不 `exitDrag`、
+  不 fling；`LauncherDragView.onStateTransitionComplete` 在 ALL_APPS 态保持
+  拖拽浮层可见；drop 时 `DragView` 需显式 `as DragView<Launcher>`（K2 下 raw
+  `DragView` 参数声明会报 "One type argument expected"）。
+- **落位动画**：重排走 `DragLayer.animateViewIntoPosition`（180ms），加到主屏
+  淡出 140ms，失败回飞 `animateDragViewToOriginalPosition`（160ms）。
+- **验证手法**：先 `input keyevent KEYCODE_HOME` 回到桌面再上滑打开抽屉，
+  截图确认图标坐标；`input motionevent DOWN x y` → 等 1200ms → `MOVE` 进入
+  拖拽。**必须按在图标或标签上**，按在格间空隙上只会得到按压态，随后下滑还会
+  关闭抽屉（早期一度误判为长按失效）。
 
 ---
 

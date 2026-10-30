@@ -26,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import app.lawnchair.LawnchairApp
 import app.lawnchair.data.iconoverride.IconOverrideRepository
 import app.lawnchair.nexuslauncher.OverlayCallbackImpl
+import app.lawnchair.oneui.OneUiClockWidgetController
 import app.lawnchair.preferences.getAdapter
 import app.lawnchair.preferences.preferenceManager
 import app.lawnchair.preferences2.preferenceManager2
@@ -110,6 +111,30 @@ fun HomeScreenPreferences(
                 label = stringResource(id = R.string.infinite_scrolling_label),
                 description = stringResource(id = R.string.infinite_scrolling_description),
             )
+        }
+        PreferenceGroup(heading = stringResource(id = R.string.oneui_clock_style)) {
+            val context = LocalContext.current
+            val clockStyle by prefs.clockStyle.getAdapter()
+            val names = listOf(
+                stringResource(id = R.string.oneui_clock_style_default),
+                stringResource(id = R.string.oneui_clock_style_compact),
+                stringResource(id = R.string.oneui_clock_style_time_only),
+                stringResource(id = R.string.oneui_clock_style_centered),
+            )
+            names.forEachIndexed { index, name ->
+                ClickablePreference(
+                    label = name,
+                    subtitle = if (clockStyle == index) {
+                        stringResource(id = R.string.oneui_clock_style_current)
+                    } else {
+                        null
+                    },
+                    onClick = {
+                        prefs.clockStyle.set(index)
+                        OneUiClockWidgetController.applyStyleToWidgets(context)
+                    },
+                )
+            }
         }
         PreferenceGroup(heading = stringResource(id = R.string.minus_one)) {
             val feedAvailable = OverlayCallbackImpl.minusOneAvailable(LocalContext.current)

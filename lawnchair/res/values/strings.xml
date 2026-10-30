@@ -92,7 +92,7 @@
     <string name="oneui_drawer_section_headers_description">Show a letter above each group of apps. Turn off for the plain One UI grid, which only uses the right-hand index.</string>
     <string name="oneui_drawer_drag_add_to_home">Add to Home screen</string>
     <string name="oneui_drawer_drag_added">Added to Home screen</string>
-    <string name="oneui_drawer_drag_alphabetical">Switch the drawer to custom order to rearrange apps</string>
+    <string name="oneui_drawer_drag_alphabetical">Switched to custom order</string>
     <string name="oneui_drawer_drag_no_space">Not enough room on the Home screen</string>
     <string name="oneui_clock_widget_description">One UI clock and date for the home screen</string>
     <string name="oneui_clock_widget_name">Clock &amp; date</string>
@@ -946,4 +946,13 @@
     <string name="grant_requested_permissions_tap">Tap to grant permissions</string>
     <!-- Message shown when all home screen views are removed -->
     <string name="home_screen_all_views_removed_msg">Home screen cleared</string>
+    <string name="oneui_clock_style">Home screen clock style</string>
+    <string name="oneui_clock_style_default">Large clock with date</string>
+    <string name="oneui_clock_style_compact">Compact clock and date</string>
+    <string name="oneui_clock_style_time_only">Time only</string>
+    <string name="oneui_clock_style_centered">Centered date and clock</string>
+    <string name="oneui_clock_style_current">Current style</string>
+    <string name="oneui_item_menu_add_home">Add to Home screen</string>
+    <string name="oneui_item_menu_info">App info</string>
+    <string name="oneui_item_menu_uninstall">Uninstall</string>
 </resources>

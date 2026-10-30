@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.widget.RemoteViews
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.Launcher
 import com.android.launcher3.LauncherSettings
@@ -127,6 +128,23 @@ object OneUiClockWidgetController {
             val id = raw.toIntOrNull() ?: return@any false
             manager.getAppWidgetInfo(id) != null
         }
+    }
+
+    /**
+     * Re-applies the current clock style to every bound widget. Called from the
+     * preferences screen after the user picks a style.
+     */
+    @JvmStatic
+    fun applyStyleToWidgets(context: Context) {
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = prefs(context).getStringSet(KEY_BOUND_IDS, emptySet()).orEmpty()
+            .mapNotNull { it.toIntOrNull() }
+            .filter { manager.getAppWidgetInfo(it) != null }
+        if (ids.isEmpty()) {
+            return
+        }
+        val views = RemoteViews(context.packageName, OneUiClockWidgetProvider.layoutForStyle(context))
+        ids.forEach { manager.updateAppWidget(it, views) }
     }
 
     /** Registers a callback invoked whenever the clock widget appears or goes away. */
