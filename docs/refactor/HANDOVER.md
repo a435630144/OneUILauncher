@@ -52,7 +52,8 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 设置 | 四张 One UI 卡片、独立通知页、One UI 关于页 | `PreferencesDashboard.kt`、`NotificationsPreferences.kt`、`about/About.kt` |
 | 动画 | 图标按压 0.92 缩小、抽屉打开时网格行级错落、抽屉打开时主屏 RenderEffect 模糊（API 31+） | `FastBitmapDrawable.java`、`AllAppsTransitionController.java`、`oneui/OneUiAppBlur.kt` |
 | 时钟样式 | 四种 RemoteViews 布局 + 主屏幕设置页单选 + 切换即时刷新小组件 | `oneui_clock_widget*.xml`、`PreferenceManager.clockStyle`、`OneUiClockWidgetController.applyStyleToWidgets` |
-| 拖拽菜单 | 拖起图标即弹 One UI 菜单（添加至主屏幕 / 卸载 / 应用信息），移动即收起 | `OneUiDrawerDragOverlay.showItemMenu` |
+| 拖拽菜单 | 拖起图标即弹 One UI 菜单（添加至主屏幕 / 卸载 / 应用信息），移动即收起；120ms 弹性弹出 | `OneUiDrawerDragOverlay.showItemMenu` |
+| 编辑态过渡 | 长按拖起 220ms：压暗渐入 + 分页卡片缩放归位 + 内容淡入（editProgress 驱动） | `OneUiDrawerDragOverlay.onDraw`、`startEditAnimation` |
 | 搜索胶囊 | 窄版居中（左右 64dp 内缩，One UI 8.5） | `search_container_all_apps.xml` |
 | 抽屉排序 | 字母 / 使用频率 / 自定义三种模式；频率按自维护启动计数降序 | `LawnchairAlphabeticalAppsList`、`LaunchCounter.kt` |
 | 文档 | 架构、验证记录、上游同步、交接说明 | `docs/refactor/` |
