@@ -141,6 +141,9 @@ class PreferenceManager private constructor(private val context: Context) :
     /** Newline separated ComponentKey strings, only used in custom sort mode. */
     val drawerCustomOrder = StringPref("pref_drawerCustomOrder", "", refreshAllApps)
 
+    /** JSON object of ComponentKey -> launch count, backing the most-used drawer sort. */
+    val appLaunchCounts = StringPref("pref_appLaunchCounts", "{}", refreshAllApps)
+
     /** One UI home screen clock style: 0 = default, 1 = compact, 2 = time only, 3 = centered. */
     val clockStyle = IntPref("pref_clockStyle", 0)
 

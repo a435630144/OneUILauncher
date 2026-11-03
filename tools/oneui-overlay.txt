@@ -67,3 +67,5 @@ src/com/android/launcher3/dragndrop/LauncherDragView.java
 lawnchair/res/layout/oneui_clock_widget_compact.xml
 lawnchair/res/layout/oneui_clock_widget_time_only.xml
 lawnchair/res/layout/oneui_clock_widget_centered.xml
+lawnchair/src/app/lawnchair/oneui/LaunchCounter.kt
+lawnchair/src/app/lawnchair/ui/preferences/destinations/GesturePreferences.kt

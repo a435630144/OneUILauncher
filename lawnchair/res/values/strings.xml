@@ -955,4 +955,5 @@
     <string name="oneui_item_menu_add_home">Add to Home screen</string>
     <string name="oneui_item_menu_info">App info</string>
     <string name="oneui_item_menu_uninstall">Uninstall</string>
+    <string name="oneui_drawer_sort_frequency">Most used</string>
 </resources>

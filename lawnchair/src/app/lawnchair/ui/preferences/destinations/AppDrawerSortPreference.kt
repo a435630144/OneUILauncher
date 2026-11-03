@@ -74,6 +74,9 @@ fun AppDrawerSortPreference(modifier: Modifier = Modifier) {
                         ListPreferenceEntry(LawnchairAlphabeticalAppsList.SORT_ALPHABETICAL) {
                             stringResource(R.string.oneui_drawer_sort_alphabetical)
                         },
+                        ListPreferenceEntry(LawnchairAlphabeticalAppsList.SORT_FREQUENCY) {
+                            stringResource(R.string.oneui_drawer_sort_frequency)
+                        },
                         ListPreferenceEntry(LawnchairAlphabeticalAppsList.SORT_CUSTOM) {
                             stringResource(R.string.oneui_drawer_sort_custom)
                         },

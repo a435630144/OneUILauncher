@@ -53,6 +53,8 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 动画 | 图标按压 0.92 缩小、抽屉打开时网格行级错落、抽屉打开时主屏 RenderEffect 模糊（API 31+） | `FastBitmapDrawable.java`、`AllAppsTransitionController.java`、`oneui/OneUiAppBlur.kt` |
 | 时钟样式 | 四种 RemoteViews 布局 + 主屏幕设置页单选 + 切换即时刷新小组件 | `oneui_clock_widget*.xml`、`PreferenceManager.clockStyle`、`OneUiClockWidgetController.applyStyleToWidgets` |
 | 拖拽菜单 | 拖起图标即弹 One UI 菜单（添加至主屏幕 / 卸载 / 应用信息），移动即收起 | `OneUiDrawerDragOverlay.showItemMenu` |
+| 搜索胶囊 | 窄版居中（左右 64dp 内缩，One UI 8.5） | `search_container_all_apps.xml` |
+| 抽屉排序 | 字母 / 使用频率 / 自定义三种模式；频率按自维护启动计数降序 | `LawnchairAlphabeticalAppsList`、`LaunchCounter.kt` |
 | 文档 | 架构、验证记录、上游同步、交接说明 | `docs/refactor/` |
 
 ---
@@ -467,7 +469,7 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - **自定义排序（已完成）**：字母 / 自定义两种模式，顺序存在
   `pref_drawerCustomOrder`，在设置页用 `ReorderablePreferenceGroup` 拖拽编辑
   （§3.5）。抽屉菜单可直接切模式并跳到编辑器；切换后列表即时刷新。
-  剩余：使用频率排序、工作资料 / 私密空间的自定义顺序；抽屉内长按拖拽已实现（§3.10），待真机实测。
+  ~~剩余：使用频率排序~~ ✅ 已实现（v0.25，自维护启动计数）；剩余：工作资料 / 私密空间的自定义顺序；抽屉内长按拖拽已实现（§3.10），待真机实测。
 - 底部菜单主入口已经完成，后续只补「搜索设置」等 One UI 8.5 菜单项。
 
 ### 6.4 设置页 One UI 化

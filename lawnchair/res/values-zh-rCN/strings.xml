@@ -744,4 +744,5 @@
     <string name="oneui_item_menu_add_home">添加至主屏幕</string>
     <string name="oneui_item_menu_info">应用程序信息</string>
     <string name="oneui_item_menu_uninstall">卸载</string>
+    <string name="oneui_drawer_sort_frequency">使用频率</string>
 </resources>

@@ -434,6 +434,12 @@ public class ItemClickHandler {
             // Preload the icon to reduce latency b/w swapping the floating view with the original.
             FloatingIconView.fetchIcon(launcher, v, item, true /* isOpening */);
         }
+        if (launcher instanceof app.lawnchair.LawnchairLauncher && item.getTargetComponent() != null) {
+            app.lawnchair.oneui.LaunchCounter.increment(
+                    launcher,
+                    new com.android.launcher3.util.ComponentKey(
+                            item.getTargetComponent(), item.user).toString());
+        }
         launcher.startActivitySafely(v, intent, item);
     }
 

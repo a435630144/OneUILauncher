@@ -119,12 +119,21 @@ class LawnchairAlphabeticalAppsList<T>(
                 }
                 position++
             }
-            val orderedApps = if (customSort) applyCustomOrder(appList.filterNotNull()) else appList
+            val orderedApps = if (customSort) {
+                applyCustomOrder(appList.filterNotNull())
+            } else if (prefs.drawerSortMode.get() == SORT_FREQUENCY) {
+                applyFrequencyOrder(appList.filterNotNull())
+            } else {
+                appList
+            }
             val remainingApps = orderedApps.filterNotNull().filterNot { app ->
                 filteredList.contains(app) && prefs.folderApps.get()
             }
             position = when {
                 customSort -> addAppsInCustomOrder(remainingApps, position)
+                prefs.drawerSortMode.get() == SORT_FREQUENCY ->
+                    // Frequency order renders as a plain grid, like the custom sort.
+                    addAppsInCustomOrder(remainingApps, position)
                 prefs.drawerSectionHeaders.get() -> addAppsWithAlphabetSections(remainingApps, position)
                 else -> super.addAppsWithSections(remainingApps, position)
             }
@@ -150,6 +159,21 @@ class LawnchairAlphabeticalAppsList<T>(
         return appList.sortedBy { app ->
             index[app.toComponentKey().toString()] ?: Int.MAX_VALUE
         }
+    }
+
+    /**
+     * Orders apps by how often they were launched from this launcher
+     * (see [app.lawnchair.oneui.LaunchCounter]); ties fall back to the
+     * alphabetical order.
+     */
+    private fun applyFrequencyOrder(appList: List<AppInfo>): List<AppInfo> {
+        val counts = app.lawnchair.oneui.LaunchCounter.snapshot(context)
+        if (counts.isEmpty()) return appList
+        val collator = java.text.Collator.getInstance(java.util.Locale.getDefault())
+        return appList.sortedWith(
+            compareByDescending<AppInfo> { counts[it.toComponentKey().toString()] ?: 0 }
+                .thenComparator { a, b -> collator.compare(a.title.toString(), b.title.toString()) },
+        )
     }
 
     /**
@@ -207,6 +231,7 @@ class LawnchairAlphabeticalAppsList<T>(
     companion object {
         const val SORT_ALPHABETICAL = "alphabetical"
         const val SORT_CUSTOM = "custom"
+        const val SORT_FREQUENCY = "frequency"
     }
 
     /**

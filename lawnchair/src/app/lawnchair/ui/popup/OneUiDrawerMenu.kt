@@ -234,6 +234,12 @@ private fun SortOptions(
         onClick = { onSelectMode(LawnchairAlphabeticalAppsList.SORT_ALPHABETICAL) },
     )
     SortOption(
+        label = stringResource(R.string.oneui_drawer_sort_frequency),
+        selected = sortMode == LawnchairAlphabeticalAppsList.SORT_FREQUENCY,
+        enabled = true,
+        onClick = { onSelectMode(LawnchairAlphabeticalAppsList.SORT_FREQUENCY) },
+    )
+    SortOption(
         label = stringResource(R.string.oneui_drawer_sort_custom),
         summary = stringResource(R.string.oneui_drawer_sort_custom_summary),
         selected = sortMode == LawnchairAlphabeticalAppsList.SORT_CUSTOM,
@@ -250,12 +256,10 @@ private fun SortOptions(
     Spacer(modifier = Modifier.height(12.dp))
 }
 
-private fun sortModeLabelRes(mode: String): Int = if (
-    mode == LawnchairAlphabeticalAppsList.SORT_CUSTOM
-) {
-    R.string.oneui_drawer_sort_custom
-} else {
-    R.string.oneui_drawer_sort_alphabetical
+private fun sortModeLabelRes(mode: String): Int = when (mode) {
+    LawnchairAlphabeticalAppsList.SORT_CUSTOM -> R.string.oneui_drawer_sort_custom
+    LawnchairAlphabeticalAppsList.SORT_FREQUENCY -> R.string.oneui_drawer_sort_frequency
+    else -> R.string.oneui_drawer_sort_alphabetical
 }
 
 @Composable
