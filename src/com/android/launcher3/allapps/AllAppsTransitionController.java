@@ -255,7 +255,8 @@ public class AllAppsTransitionController
                 && mLauncher.getAppsView().getNavBarScrimHeight() > 0;
         mLauncher.getSystemUiController().updateUiState(
                 UI_STATE_ALL_APPS, hasScrim ? mNavScrimFlag : 0);
-        applyIconStagger(progress);
+        app.lawnchair.oneui.OneUiAppBlur.apply(mLauncher, 1 - mProgress);
+                applyIconStagger(progress);
     }
 
     /**

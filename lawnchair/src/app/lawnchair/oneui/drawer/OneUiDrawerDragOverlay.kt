@@ -31,9 +31,11 @@ import android.text.TextUtils
 import android.view.Gravity
 import android.provider.Settings
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AnimationUtils
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
@@ -79,6 +81,7 @@ class OneUiDrawerDragOverlay(
     private val density = resources.displayMetrics.density
 
     private val dimPaint = Paint()
+    private val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val neighborPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val dotsPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -89,6 +92,7 @@ class OneUiDrawerDragOverlay(
         strokeJoin = Paint.Join.ROUND
     }
     private val bandPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bandFillPaint = Paint()
     private val bandTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         textAlign = Paint.Align.LEFT
@@ -121,10 +125,15 @@ class OneUiDrawerDragOverlay(
     private var lastTouchY = 0
     private var dragStartX = 0
     private var dragStartY = 0
+    private var dragStartSet = false
     private var itemMenu: PopupWindow? = null
+    private var menuRunnable: Runnable? = null
+    private var draggingView: DragView<*>? = null
 
     private val tmpRect = Rect()
+    private val tmpGrid = Rect()
     private val location = IntArray(2)
+    private var overlayTopOnScreen = -1
 
     private val addToHomeText = context.getString(R.string.oneui_drawer_drag_add_to_home)
 
@@ -132,21 +141,28 @@ class OneUiDrawerDragOverlay(
 
     init {
         setWillNotDraw(false)
+        // Invisible at rest: an INVISIBLE child is skipped by touch dispatch, so the drawer stays
+        // fully interactive. It keeps its laid-out bounds, which the DropTarget hit rect needs.
+        visibility = INVISIBLE
         isClickable = false
         isFocusable = false
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
-        outlinePaint.strokeWidth = 1.3f * density
+        outlinePaint.strokeWidth = 1.2f * density
         plusPaint.strokeWidth = 1.6f * density
         bandTextPaint.textSize = 13.5f * resources.displayMetrics.scaledDensity
         labelPaint.textSize = 12f * resources.displayMetrics.scaledDensity
-        dotsPaint.color = ColorUtils.setAlphaComponent(Color.WHITE, 70)
+        dotsPaint.color = ColorUtils.setAlphaComponent(Color.WHITE, 125)
         bandPaint.color = ColorUtils.setAlphaComponent(Color.WHITE, 26)
+        bandFillPaint.color = ColorUtils.setAlphaComponent(Color.WHITE, 12)
         bandTextPaint.color = Color.WHITE
         plusPaint.color = Color.WHITE
         labelPaint.color = ColorUtils.setAlphaComponent(Color.WHITE, 235)
-        neighborPaint.color = ColorUtils.setAlphaComponent(Color.WHITE, 64)
+        // The page sheet is barely lighter than the dimmed background; the side rails, not a
+        // bright card, are what delineate it in One UI.
+        cardPaint.color = ColorUtils.setAlphaComponent(Color.WHITE, 6)
+        neighborPaint.color = ColorUtils.setAlphaComponent(Color.WHITE, 44)
         // The edit mode sits on a dark scrim even when the drawer itself uses a light theme.
-        dimPaint.color = ColorUtils.setAlphaComponent(Color.BLACK, 200)
+        dimPaint.color = ColorUtils.setAlphaComponent(Color.BLACK, 215)
     }
 
     // region Data
@@ -196,6 +212,7 @@ class OneUiDrawerDragOverlay(
         }
         active = true
         dragged = app
+        draggingView = dragObject.dragView
         iconCache.clear()
         page = pageOf(list.indexOf(app)).coerceAtLeast(0)
         pageOffset = page.toFloat()
@@ -203,20 +220,32 @@ class OneUiDrawerDragOverlay(
         targetIndex = -1
         targetRect.setEmpty()
         addToHomeEdge = 0
-        dragStartX = dragObject.x
-        dragStartY = dragObject.y
+        // dragObject.x/y are only filled in by the first hit-test, so the menu slop baseline is
+        // captured on the first onDragOver instead (otherwise the initial 0,0 reads as a 600px
+        // move and the menu is cancelled before it ever appears).
+        dragStartSet = false
+        overlayTopOnScreen = -1
         // The overlay takes over completely; the live list (and its search capsule) hide.
+        visibility = VISIBLE
         appsView.visibility = INVISIBLE
-        showItemMenu(app, dragObject.originalView as? View)
+        // One UI shows the item menu only when the icon is held still. A short delay keeps the
+        // menu from flashing when the drag starts moving straight away.
+        val source = dragObject.originalView as? View
+        val menu = Runnable { showItemMenu(app, source) }
+        menuRunnable = menu
+        postDelayed(menu, ITEM_MENU_DELAY)
         invalidate()
     }
 
     override fun onDragEnd() {
         removeCallbacks(edgeFlipRunnable)
         edgeDirection = 0
+        menuRunnable?.let { removeCallbacks(it) }
+        menuRunnable = null
         dismissItemMenu()
         active = false
         dragged = null
+        draggingView = null
         ordered = null
         iconCache.clear()
         targetIndex = -1
@@ -225,6 +254,7 @@ class OneUiDrawerDragOverlay(
         pageAnimator?.cancel()
         pageAnimator = null
         appsView.visibility = VISIBLE
+        visibility = INVISIBLE
         invalidate()
     }
 
@@ -240,13 +270,18 @@ class OneUiDrawerDragOverlay(
     override fun onDragOver(dragObject: DropTarget.DragObject) {
         lastTouchX = dragObject.x
         lastTouchY = dragObject.y
+        if (!dragStartSet) {
+            dragStartX = lastTouchX
+            dragStartY = lastTouchY
+            dragStartSet = true
+        }
         // Moving the icon beyond a small slop closes the One UI item menu.
-        if (itemMenu != null) {
-            val dx = (lastTouchX - dragStartX).toDouble()
-            val dy = (lastTouchY - dragStartY).toDouble()
-            if (sqrt(dx * dx + dy * dy) > 8f * density) {
-                dismissItemMenu()
-            }
+        val dx = (lastTouchX - dragStartX).toDouble()
+        val dy = (lastTouchY - dragStartY).toDouble()
+        if (sqrt(dx * dx + dy * dy) > 8f * density) {
+            menuRunnable?.let { removeCallbacks(it) }
+            menuRunnable = null
+            dismissItemMenu()
         }
         updateTarget(lastTouchX, lastTouchY)
         invalidate()
@@ -317,26 +352,59 @@ class OneUiDrawerDragOverlay(
         dragLayer.getDescendantRectRelativeToSelf(this, outRect)
     }
 
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        // The overlay is purely visual: never take touches away from the drawer / workspace below.
+        return false
+    }
+
     // endregion
 
     // region Geometry
 
     private fun cardRect(out: Rect): Rect {
         val w = width
-        val h = height
-        if (w == 0 || h == 0) {
+        if (w == 0 || height == 0) {
             out.setEmpty()
             return out
         }
-        val horizontal = (w * 0.063f).roundToInt()
-        val top = (h * 0.092f).roundToInt()
-        val bottom = (h * 0.836f).roundToInt()
+        // The page sheet is centred on the whole screen in One UI: ~9.7% of empty scrim above
+        // and below it. The overlay lives inside the DragLayer (below the status bar), so map
+        // the screen ratio back into local coordinates.
+        val screenH = resources.displayMetrics.heightPixels
+        val horizontal = (w * 0.028f).roundToInt()
+        val top = (screenH * 0.0967f).roundToInt() - overlayTop()
+        val bottom = (screenH * 0.9029f).roundToInt() - overlayTop()
         out.set(horizontal, top, w - horizontal, bottom)
         return out
     }
 
+    /**
+     * The 4x6 cell area inside the sheet. One UI insets it slightly and reserves a strip at the
+     * bottom for the page dots.
+     */
+    private fun gridRect(card: Rect, out: Rect): Rect {
+        val hInset = (4f * density).roundToInt()
+        val topInset = (3.5f * density).roundToInt()
+        val bottomInset = (34f * density).roundToInt()
+        out.set(
+            card.left + hInset,
+            card.top + topInset,
+            card.right - hInset,
+            card.bottom - bottomInset,
+        )
+        return out
+    }
+
+    private fun overlayTop(): Int {
+        if (overlayTopOnScreen < 0) {
+            getLocationOnScreen(location)
+            overlayTopOnScreen = location[1]
+        }
+        return overlayTopOnScreen
+    }
+
     private fun pageX(pageIndex: Int, card: Rect): Int =
-        card.left + ((pageIndex - pageOffset) * (card.width() + 16f * density)).roundToInt()
+        card.left + ((pageIndex - pageOffset) * (card.width() + 8f * density)).roundToInt()
 
     // endregion
 
@@ -348,9 +416,12 @@ class OneUiDrawerDragOverlay(
             resetTarget()
             return
         }
+        val grid = gridRect(card, tmpGrid)
 
-        // Above / below the paged card: drop to the home screen.
-        if (y < card.top || y > card.bottom) {
+        // Above / below the paged card: drop to the home screen. A small dead zone keeps drops on
+        // the very first / last row inside the grid instead of turning them into home-screen adds.
+        val out = 8f * density
+        if (y < card.top - out || y > card.bottom + out) {
             addToHomeEdge = if (y < card.top) 1 else 2
             targetIndex = -1
             targetRect.setEmpty()
@@ -360,15 +431,15 @@ class OneUiDrawerDragOverlay(
         }
         addToHomeEdge = 0
 
-        // Left / right edge band: flip pages while held. Keep the band narrow so the outer
-        // columns can still be used as drop cells.
-        val edge = 36f * density
+        // Left / right edge band: flip pages while held. The band matches the peek strip of the
+        // neighbouring page, narrow enough that the outer columns stay usable as drop cells.
+        val edge = 12f * density
         val direction = when {
-            x < card.left + edge -> -1
-            x > card.right - edge -> 1
+            x < grid.left + edge -> -1
+            x > grid.right - edge -> 1
             else -> 0
         }
-        if (direction != 0) {
+        if (direction != 0 && page + direction in 0 until pageCount) {
             targetIndex = -1
             targetRect.setEmpty()
             startEdgeFlip(direction)
@@ -377,25 +448,24 @@ class OneUiDrawerDragOverlay(
         }
         stopEdgeFlip()
 
-        if (!card.contains(x, y)) {
-            resetTarget()
-            invalidate()
-            return
-        }
-
-        updateGridTarget(x, y, card)
+        // No page in that direction: the edge still belongs to the outer column, so drop there.
+        // Clamping keeps the 8dp dead zone just outside the sheet snapping to the nearest row
+        // instead of falling through to a fly-back.
+        val clampedX = x.coerceIn(grid.left + 1, grid.right - 1)
+        val clampedY = y.coerceIn(grid.top + 1, grid.bottom - 1)
+        updateGridTarget(clampedX, clampedY, grid)
     }
 
-    private fun updateGridTarget(x: Int, y: Int, card: Rect) {
+    private fun updateGridTarget(x: Int, y: Int, grid: Rect) {
         val list = ordered ?: return
-        val cellW = card.width().toFloat() / gridCols
-        val cellH = card.height().toFloat() / gridRows
-        val col = ((x - card.left) / cellW).toInt().coerceIn(0, gridCols - 1)
-        val row = ((y - card.top) / cellH).toInt().coerceIn(0, gridRows - 1)
+        val cellW = grid.width().toFloat() / gridCols
+        val cellH = grid.height().toFloat() / gridRows
+        val col = ((x - grid.left) / cellW).toInt().coerceIn(0, gridCols - 1)
+        val row = ((y - grid.top) / cellH).toInt().coerceIn(0, gridRows - 1)
         val cell = row * gridCols + col
 
-        val cellLeft = (card.left + col * cellW).roundToInt()
-        val cellTop = (card.top + row * cellH).roundToInt()
+        val cellLeft = (grid.left + col * cellW).roundToInt()
+        val cellTop = (grid.top + row * cellH).roundToInt()
         targetRect.set(cellLeft, cellTop, (cellLeft + cellW).roundToInt(), (cellTop + cellH).roundToInt())
 
         val pageStart = page * cellsPerPage
@@ -411,10 +481,10 @@ class OneUiDrawerDragOverlay(
     private fun pageCountFor(size: Int): Int = ceil(size / cellsPerPage.toDouble()).toInt().coerceAtLeast(1)
 
     private fun iconSize(cellW: Float, cellH: Float): Int =
-        min(cellW * 0.64f, cellH * 0.52f).roundToInt()
+        min(cellW * 0.62f, cellH * 0.505f).roundToInt()
 
     /** Icons and labels sit slightly above the vertical cell centre, as in the drawer itself. */
-    private fun iconCenterY(cellTop: Int, cellH: Float): Float = cellTop + cellH * 0.42f
+    private fun iconCenterY(cellTop: Int, cellH: Float): Float = cellTop + cellH * 0.40f
 
     // endregion
 
@@ -570,35 +640,118 @@ class OneUiDrawerDragOverlay(
                 },
             )
         }
+        val cardColor = Color.parseColor("#F7F7FA")
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
                 cornerRadius = px(24f).toFloat()
-                setColor(Color.parseColor("#F7F7FA"))
+                setColor(cardColor)
             }
             elevation = px(12f).toFloat()
             addView(titleRow)
             addView(actionsRow)
         }
+        // One UI points a small diamond from the card at the source icon; the card itself is
+        // centred on the icon (clamped to the screen) so the pointer lands under the icon.
+        val pointerSize = px(12f)
+        val pointerLp = FrameLayout.LayoutParams(pointerSize, pointerSize).apply {
+            gravity = Gravity.BOTTOM or Gravity.LEFT
+            bottomMargin = px(4f)
+        }
+        val pointer = View(context).apply {
+            background = GradientDrawable().apply {
+                cornerRadius = px(2f).toFloat()
+                setColor(cardColor)
+            }
+            rotation = 45f
+            layoutParams = pointerLp
+        }
+        val cardLp = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply { bottomMargin = px(12f) }
+        val content = FrameLayout(context).apply {
+            setPadding(0, 0, 0, px(12f))
+            addView(container, cardLp)
+            addView(pointer)
+        }
 
+        val widthPx = px(300f)
+        // Measure first: the card flips below the icon when there is not enough room above it.
+        content.measure(
+            View.MeasureSpec.makeMeasureSpec(widthPx, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+        )
+        val menuHeight = content.measuredHeight
+
+        // Anchor on the icon itself rather than the list row: the row view carries label
+        // padding, which pushed the card ~50dp away from the icon.
+        val card = cardRect(tmpRect)
+        val grid = gridRect(card, tmpGrid)
+        val cellW = grid.width().toFloat() / gridCols
+        val cellH = grid.height().toFloat() / gridRows
+        source.getLocationOnScreen(location)
+        val viewCenterX = location[0] + source.width / 2f
+        val viewCenterY = location[1] + source.height / 2f - overlayTop()
+        val col = ((viewCenterX - grid.left) / cellW).toInt().coerceIn(0, gridCols - 1)
+        val row = ((viewCenterY - grid.top) / cellH).toInt().coerceIn(0, gridRows - 1)
+        val cellTop = (grid.top + row * cellH).roundToInt()
+        val iconCx = grid.left + (col + 0.5f) * cellW
+        val iconSizePx = iconSize(cellW, cellH).toFloat()
+        val slotIconTop = iconCenterY(cellTop, cellH) - iconSizePx / 2f + overlayTop()
+        val slotIconBottom = slotIconTop + iconSizePx
+
+        // Point at the lifted icon (what the user actually sees). DragView.getDragRegion() is the
+        // icon rect inside the *source* view, not inside the floating preview (the preview is
+        // shifted by the blur outline and by how the bitmap is re-centred), so apply it to the
+        // source view's screen position instead of the drag view's.
+        var anchorCx = iconCx
+        var anchorTop = slotIconTop
+        var anchorBottom = slotIconBottom
+        draggingView?.dragRegion?.takeIf { !it.isEmpty }?.let { region ->
+            anchorCx = (location[0] + region.centerX()).toFloat()
+            anchorTop = (location[1] + region.top).toFloat()
+            anchorBottom = (location[1] + region.bottom).toFloat()
+        }
+
+        val screenW = resources.displayMetrics.widthPixels
+        val sideMargin = px(8f)
+        val left = (anchorCx - widthPx / 2f).roundToInt()
+            .coerceIn(sideMargin, (screenW - widthPx - sideMargin).coerceAtLeast(sideMargin))
+        pointerLp.leftMargin = (anchorCx - left - pointerSize / 2f).roundToInt()
+            .coerceIn(px(26f), widthPx - px(26f) - pointerSize)
+
+        val statusBar = resources.getIdentifier("status_bar_height", "dimen", "android")
+            .takeIf { it > 0 }
+            ?.let { resources.getDimensionPixelSize(it) }
+            ?: 0
+        // In the "above" layout the diamond tip sits 4dp above the content bottom; in the
+        // "below" layout it sits 16dp below the content top (12dp padding + 4dp margin).
+        val tipBelow = px(4f)
+        val tipAbove = px(16f)
+        val tipGap = px(10f)
+        val top: Int
+        if (anchorTop - tipGap - (menuHeight - tipBelow) >= statusBar) {
+            top = (anchorTop - tipGap - (menuHeight - tipBelow)).roundToInt()
+        } else {
+            // No room above: place the card under the icon and point the diamond upwards.
+            content.setPadding(0, px(12f), 0, 0)
+            cardLp.topMargin = px(12f)
+            cardLp.bottomMargin = 0
+            pointerLp.gravity = Gravity.TOP or Gravity.LEFT
+            pointerLp.topMargin = px(4f)
+            pointerLp.bottomMargin = 0
+            top = (anchorBottom + tipGap - tipAbove).roundToInt()
+        }
         val menu = PopupWindow(
-            container,
-            px(300f),
+            content,
+            widthPx,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             false,
         ).apply {
             isOutsideTouchable = true
         }
-
-        // Anchor above the source icon, centered on it.
-        source.getLocationOnScreen(location)
-        val own = IntArray(2)
-        getLocationOnScreen(own)
-        val anchorX = location[0] - own[0] + source.width / 2
-        val anchorY = location[1] - own[1]
-        val x = (anchorX - px(300f) / 2).coerceIn(8, width - px(300f) - 8)
-        val y = (anchorY - px(300f) / 8).coerceAtLeast(8)
-        menu.showAtLocation(this, Gravity.NO_GRAVITY, x, y)
+        menu.showAtLocation(this, Gravity.NO_GRAVITY, left, top)
         itemMenu = menu
     }
 
@@ -658,18 +811,19 @@ class OneUiDrawerDragOverlay(
         val list = ordered ?: return
         val card = cardRect(tmpRect)
         if (card.isEmpty) return
+        val grid = gridRect(card, tmpGrid)
 
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
 
-        val cellW = card.width().toFloat() / gridCols
-        val cellH = card.height().toFloat() / gridRows
+        val cellW = grid.width().toFloat() / gridCols
+        val cellH = grid.height().toFloat() / gridRows
         val iconSize = iconSize(cellW, cellH)
 
         // Neighbouring pages peek from the screen edges as light rounded strips, exactly like the
-        // One UI paged editor; the current page itself has no card background. They are drawn at
-        // rest only, while a page flip animation moves the incoming page itself.
+        // One UI paged editor. They are drawn at rest only, while a page flip animation moves the
+        // incoming page itself.
         if (pageOffset == page.toFloat()) {
-            drawNeighborStrips(canvas, card)
+            drawNeighborStrips(canvas, grid)
         }
 
         val currentLeft = pageX(page, card).toFloat()
@@ -679,8 +833,18 @@ class OneUiDrawerDragOverlay(
             currentLeft + card.width(),
             card.bottom.toFloat(),
         )
-        drawDots(canvas, pageCard, cellW, cellH)
-        drawPageApps(canvas, list, page, pageCard, iconSize)
+        val radius = 24f * density
+        canvas.drawRoundRect(pageCard, radius, radius, cardPaint)
+
+        val hInset = grid.left - card.left
+        val pageGrid = RectF(
+            currentLeft + hInset,
+            grid.top.toFloat(),
+            currentLeft + card.width() - hInset,
+            grid.bottom.toFloat(),
+        )
+        drawDots(canvas, pageGrid, cellW, cellH)
+        drawPageApps(canvas, list, page, pageGrid, iconSize)
         if (targetIndex >= 0 && !targetRect.isEmpty) {
             drawTargetOutline(canvas, cellW, cellH)
         }
@@ -692,11 +856,11 @@ class OneUiDrawerDragOverlay(
         }
     }
 
-    private fun drawNeighborStrips(canvas: Canvas, card: Rect) {
-        val stripWidth = 9f * density
-        val radius = 26f * density
-        val top = card.top.toFloat()
-        val bottom = card.bottom.toFloat()
+    private fun drawNeighborStrips(canvas: Canvas, grid: Rect) {
+        val stripWidth = 11.5f * density
+        val radius = 24f * density
+        val top = grid.top.toFloat()
+        val bottom = grid.bottom.toFloat()
         if (page > 0) {
             // Left rounded corners stay off screen, so only the inner edge reads as rounded.
             canvas.drawRoundRect(-radius, top, stripWidth, bottom, radius, radius, neighborPaint)
@@ -707,20 +871,21 @@ class OneUiDrawerDragOverlay(
         }
     }
 
-    private fun drawDots(canvas: Canvas, pageCard: RectF, cellW: Float, cellH: Float) {
-        val half = 0.9f * density
+    private fun drawDots(canvas: Canvas, pageGrid: RectF, cellW: Float, cellH: Float) {
+        val half = 1.3f * density
+        // Only the internal gutter intersections: 3 vertical x 5 horizontal lines for a 4x6 grid.
         for (col in 1 until gridCols) {
-            val x = pageCard.left + col * cellW
-            for (row in 1..gridRows) {
-                val y = pageCard.top + row * cellH
+            val x = pageGrid.left + col * cellW
+            for (row in 1 until gridRows) {
+                val y = pageGrid.top + row * cellH
                 canvas.drawRect(x - half, y - half, x + half, y + half, dotsPaint)
             }
         }
     }
 
-    private fun drawPageApps(canvas: Canvas, list: List<AppInfo>, page: Int, pageCard: RectF, iconSize: Int) {
-        val cellW = pageCard.width() / gridCols
-        val cellH = pageCard.height() / gridRows
+    private fun drawPageApps(canvas: Canvas, list: List<AppInfo>, page: Int, pageGrid: RectF, iconSize: Int) {
+        val cellW = pageGrid.width() / gridCols
+        val cellH = pageGrid.height() / gridRows
         val draggedKey = dragged?.toComponentKey()?.toString()
         val emptyCell = 5f * density
         for (cell in 0 until cellsPerPage) {
@@ -729,8 +894,8 @@ class OneUiDrawerDragOverlay(
             if (draggedKey != null && key == draggedKey) continue
             val col = cell % gridCols
             val row = cell / gridCols
-            val cellLeft = pageCard.left + col * cellW
-            val cellTop = pageCard.top + row * cellH
+            val cellLeft = pageGrid.left + col * cellW
+            val cellTop = pageGrid.top + row * cellH
             val cx = cellLeft + cellW / 2f
             val cy = iconCenterY(cellTop.roundToInt(), cellH)
             val drawable = iconCache.getOrPut(key) { app.bitmap.newIcon(context) }
@@ -750,7 +915,7 @@ class OneUiDrawerDragOverlay(
                 cellW - emptyCell * 2,
                 TextUtils.TruncateAt.END,
             )
-            val labelTop = cy + iconSize / 2f + 8f * density
+            val labelTop = cy + iconSize / 2f + 12f * density
             val baseline = labelTop - labelPaint.fontMetrics.ascent
             canvas.drawText(label.toString(), cx, baseline, labelPaint)
             canvas.restore()
@@ -758,57 +923,75 @@ class OneUiDrawerDragOverlay(
     }
 
     private fun drawTargetOutline(canvas: Canvas, cellW: Float, cellH: Float) {
-        val size = iconSize(cellW, cellH) + 10f * density
+        val size = iconSize(cellW, cellH) + 2f * density
         val cx = targetRect.centerX().toFloat()
         val cy = iconCenterY(targetRect.top, cellH)
         val half = size / 2f
         val outline = RectF(cx - half, cy - half, cx + half, cy + half)
-        val radius = size * 0.24f
-        outlinePaint.alpha = 200
+        val radius = size * 0.26f
+        outlinePaint.alpha = 170
         canvas.drawRoundRect(outline, radius, radius, outlinePaint)
     }
 
     private fun drawAddToHome(canvas: Canvas, card: Rect) {
-        val height = 46f * density
-        val gap = 12f * density
-        val top = if (addToHomeEdge == 1) {
-            (card.top - height - gap).coerceAtLeast(72f * density)
-        } else {
-            card.bottom + gap
-        }
+        // Tint the whole empty band so the add-to-home zone reads as its own area.
+        val bandTop = if (addToHomeEdge == 1) 0f else card.bottom.toFloat()
+        val bandBottom = if (addToHomeEdge == 1) card.top.toFloat() else height.toFloat()
+        canvas.drawRect(0f, bandTop, width.toFloat(), bandBottom, bandFillPaint)
+
+        // Centre the hint pill inside the band; the bottom band is short because the overlay ends
+        // at the navigation bar.
+        val available = bandBottom - bandTop
+        val height = min(40f * density, available - 8f * density).coerceAtLeast(24f * density)
+        val centerY = (bandTop + bandBottom) / 2f
         val margin = 32f * density
-        val band = RectF(card.left + margin, top, card.right - margin, top + height)
+        val band = RectF(
+            card.left + margin,
+            centerY - height / 2f,
+            card.right - margin,
+            centerY + height / 2f,
+        )
         canvas.drawRoundRect(band, height / 2f, height / 2f, bandPaint)
 
-        val circleX = band.left + 26f * density
-        val circleY = band.centerY()
         val circleRadius = 8.5f * density
+        val textGap = 10f * density
+        val textWidth = bandTextPaint.measureText(addToHomeText)
+        val contentWidth = circleRadius * 2f + textGap + textWidth
+        val contentLeft = maxOf(
+            band.centerX() - contentWidth / 2f,
+            band.left + 16f * density,
+        )
+        val circleX = contentLeft + circleRadius
+        val circleY = band.centerY()
         canvas.drawCircle(circleX, circleY, circleRadius, plusPaint)
         val plusHalf = 4.2f * density
         canvas.drawLine(circleX - plusHalf, circleY, circleX + plusHalf, circleY, plusPaint)
         canvas.drawLine(circleX, circleY - plusHalf, circleX, circleY + plusHalf, plusPaint)
 
-        val textX = band.left + 46f * density
+        val textX = circleX + circleRadius + textGap
         val metrics = bandTextPaint.fontMetrics
         val baseline = band.centerY() - (metrics.ascent + metrics.descent) / 2f
         canvas.drawText(addToHomeText, textX, baseline, bandTextPaint)
     }
 
     private fun drawPageDots(canvas: Canvas, card: Rect, count: Int, activePage: Int) {
-        val radius = 3.2f * density
-        val spacing = 17f * density
-        val total = count.coerceAtLeast(1)
+        val radius = 3.4f * density
+        val spacing = 19f * density
+        val slotCount = count + 1
         val centerX = card.exactCenterX()
-        val y = card.bottom + 78f * density
-        for (i in 0 until total) {
+        // One UI keeps the page dots just inside the bottom of the sheet; the trailing "+" is an
+        // extra slot in the same row, and the whole row (dots + plus) is centred on the sheet.
+        val startX = centerX - (slotCount - 1) * spacing / 2f
+        val y = card.bottom - 16f * density
+        for (i in 0 until count) {
             pageDotPaint.color = Color.WHITE
-            pageDotPaint.alpha = if (i == activePage) 255 else 90
-            canvas.drawCircle(centerX - (total - 1) * spacing / 2f + i * spacing, y, radius, pageDotPaint)
+            pageDotPaint.alpha = if (i == activePage) 255 else 110
+            canvas.drawCircle(startX + i * spacing, y, radius, pageDotPaint)
         }
-        val plusX = centerX + (total - 1) * spacing / 2f + 22f * density
-        val half = 4.6f * density
+        val plusX = startX + count * spacing
+        val half = 4.4f * density
         pageDotPaint.color = Color.WHITE
-        pageDotPaint.alpha = 90
+        pageDotPaint.alpha = 150
         canvas.drawLine(plusX - half, y, plusX + half, y, pageDotPaint)
         canvas.drawLine(plusX, y - half, plusX, y + half, pageDotPaint)
     }
@@ -818,5 +1001,6 @@ class OneUiDrawerDragOverlay(
     private companion object {
         const val EDGE_FLIP_DWELL = 380L
         const val EDGE_FLIP_INTERVAL = 420L
+        const val ITEM_MENU_DELAY = 120L
     }
 }

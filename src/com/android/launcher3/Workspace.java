@@ -1943,7 +1943,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
         if (child instanceof BubbleTextView) {
             BubbleTextView btv = (BubbleTextView) child;
-            if (!dragOptions.isAccessibleDrag) {
+            // Drawer drags go straight into the One UI edit mode; the deep-shortcut popup is a
+            // workspace affordance and would hold the drag back until the finger moves 16dp.
+            if (!dragOptions.isAccessibleDrag && !dragOptions.isDrawerDrag) {
                 dragOptions.preDragCondition = btv.startLongPressAction();
             }
             if (btv.isDisplaySearchResult()) {
