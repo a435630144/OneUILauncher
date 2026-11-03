@@ -45,6 +45,7 @@ import androidx.core.graphics.ColorUtils
 import app.lawnchair.LawnchairLauncher
 import app.lawnchair.allapps.LawnchairAlphabeticalAppsList
 import app.lawnchair.preferences.PreferenceManager
+import com.android.launcher3.BubbleTextView
 import com.android.launcher3.DropTarget
 import com.android.launcher3.Launcher
 import com.android.launcher3.LauncherState
@@ -55,6 +56,7 @@ import com.android.launcher3.dragndrop.DragLayer
 import com.android.launcher3.dragndrop.DragOptions
 import com.android.launcher3.dragndrop.DragView
 import com.android.launcher3.model.data.AppInfo
+import com.android.launcher3.touch.ItemLongClickListener
 import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -232,6 +234,8 @@ class OneUiDrawerDragOverlay(
         // The overlay takes over completely; the live list (and its search capsule) hide.
         visibility = VISIBLE
         appsView.visibility = INVISIBLE
+        // Play the One UI edit-mode enter transition (scrim fade + card scale-in).
+        startEditAnimation()
         startEditAnimation()
         // One UI shows the item menu only when the icon is held still. A short delay keeps the
         // menu from flashing when the drag starts moving straight away.
@@ -836,7 +840,20 @@ class OneUiDrawerDragOverlay(
     }
 
     private fun flyBack(dragView: DragView<Launcher>) {
-        launcher.dragController.animateDragViewToOriginalPosition(null, null, 160)
+        val origin = (dragged?.toComponentKey()?.toString())?.let { key ->
+            appsView.activeRecyclerView?.let { rv ->
+                for (i in 0 until rv.childCount) {
+                    val child = rv.getChildAt(i)
+                    if (child is BubbleTextView && child.tag is AppInfo &&
+                        (child.tag as AppInfo).toComponentKey().toString() == key
+                    ) {
+                        return@let child
+                    }
+                }
+            }
+            null
+        }
+        launcher.dragController.animateDragViewToOriginalPosition(null, origin, 160)
     }
 
     // endregion

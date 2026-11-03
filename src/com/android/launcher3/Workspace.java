@@ -1639,6 +1639,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             if (child != null) {
                 float scrollProgress = getScrollProgress(screenCenter, child, i);
                 child.setScrollProgress(scrollProgress);
+                // One UI subtle parallax: content trails the page frame by up to 30px.
+                child.getShortcutsAndWidgets().setTranslationX(
+                        (mIsRtl ? -1 : 1) * scrollProgress * 30f);
                 // One UI subtle parallax: page content trails the page frame slightly,
                 // so icons drift toward the center as the page slides in.
                 float parallax = scrollProgress * 30f;
