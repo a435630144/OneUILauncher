@@ -458,3 +458,31 @@
 
 - `HANDOVER.md` §6.3 更新（使用频率排序完成）、§3 新增频率排序说明。
 - `tools/oneui-overlay.txt` 增加 `LaunchCounter.kt`、`ItemClickHandler.java`。
+
+## v0.26 — 编辑态过渡动画与菜单弹出动画（2026-11-04）
+
+**动画**
+
+- **拖拽编辑态进入过渡**：长按拖起后 220ms 内完成 One UI 式过渡——背景压暗渐入
+  （scrim alpha 0→215 随 editProgress 插值）、分页卡片从全屏矩形缩放归位到目标
+  卡片矩形（四边 lerp）、卡片内容（格点/图标/描边）经 `saveLayerAlpha` 整体淡入，
+  邻页边缘条与页点在过渡后半程（progress > 0.6）出现。
+- **拖拽菜单弹出动画**：菜单卡片从锚点尖角处弹性展开——pivot 在图标侧
+  （上方布局 pivot 底部中心、下方布局 pivot 顶部），0.86 → 1.0 缩放 + 淡入，
+  120ms，与长按菜单同节奏。
+- 退出即恢复（松手时直接还原，不与 DragView 落位动画叠加）。
+
+**实现**
+
+- `OneUiDrawerDragOverlay` 新增 `editProgress`（0→1 ValueAnimator，FastOutSlowIn）
+  与 `startEditAnimation()`；`onDraw` 将 scrim alpha、卡片矩形（RectF lerp）、
+  内容层 alpha 全部参数化。菜单弹出动画挂在 `showItemMenu` 的
+  `showAtLocation` 之后（content 属性动画）。
+
+**验证**
+
+- `:assembleLawnWithQuickstepGithubDebug` 构建通过；过渡/弹出动画待真机实测。
+
+**文档**
+
+- `CHANGELOG.md`、`tools/oneui-overlay.txt` 同步。
