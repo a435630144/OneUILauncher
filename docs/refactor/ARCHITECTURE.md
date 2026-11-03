@@ -488,34 +488,51 @@ One UI 的改动被刻意收在十几个文件里（见 `tools/oneui-overlay.txt
 ## 10. 抽屉拖拽编辑模式
 
 - 入口与框架协作：`ItemLongClickListener.onAllAppsItemLongClick` → `newDragOptions`
-  设 `DragOptions.isDrawerDrag`（`LawnchairLauncher` 且非搜索态）。`Workspace`
-  跳过常规起手（不切 SPRING_LOADED）并在 `onDragEnd` 提前返回；
-  `LauncherDragController` 在抽屉拖拽时不 `exitDrag`、不做 fling；
-  `LauncherDragView` 在 ALL_APPS 态保持拖拽浮层可见。
+  设 `DragOptions.isDrawerDrag`（`LawnchairLauncher` 且非搜索态）。抽屉拖拽不再
+  走 `BubbleTextView.startLongPressAction()` 的深链弹窗预言条件（否则要先移动
+  16dp 才真正起拖），长按直接进入编辑态；`Workspace` 跳过常规起手（不切
+  SPRING_LOADED）并在 `onDragEnd` 提前返回；`LauncherDragController` 在抽屉
+  拖拽时不 `exitDrag`、不做 fling；`LauncherDragView` 在 ALL_APPS 态保持拖拽
+  浮层可见。
 - 接管：`OneUiDrawerDragOverlay`（DragLayer 的全屏子 View，同时是 `DropTarget`
   与 `DragController.DragListener`）在拖起时把 `appsView` 置为 `INVISIBLE`
   （搜索胶囊随列表一并隐藏），整个编辑态由它自绘；`onDragEnd` 恢复可见。
-- 视觉（对照真机截图）：
-  - 黑色 scrim 200/255；
-  - 4×6 分页网格 `cardRect`：左右各 6.3%、上 9.2%、下 83.6%；当前页没有卡片底色；
-  - 定位点：列分界 1..3 × 行分界 1..6 的方形点（半径 0.9dp、白 70 alpha）；
-  - 图标：`min(0.64×格宽, 0.52×格高)`，中心落在格高 42% 处；标签 12sp、单行省略；
-  - 落点：白色 1.3dp 圆角描边，边长 `iconSize + 10dp`、圆角 0.24×边长、白 200；
-  - 相邻页：有前/后页时屏幕左右各一条 9dp 宽、白 64 alpha 的圆角竖条，只在
-    页面静止时绘制，翻页动画期间不画；
-  - 页点：3.2dp 白点、间距 17dp，位于卡片下方 78dp；右侧单独一个「+」。
+- 视觉（按 1080×2400 真机截图逐像素校准）：
+  - 黑色 scrim 215/255；
+  - 4×6 分页网格 `cardRect`：左右各 2.8%（≈30px）、上 9.67%（232px）、下
+    90.29%（2167px），圆角 24dp；当前页只是一张白 6 alpha 的卡片（几乎与背景
+    同色），有前后页时屏幕左右各一条 11.5dp 的邻页边缘条，只覆盖网格高度；
+  - 网格 `gridRect`：卡片内左右 4dp、上 3.5dp、下 34dp（底部留给页点）；
+    1080px 宽下每格约 250×306px；
+  - 定位点：列分界 1..3 × 行分界 1..5 的方形点（1.3dp、白 125 alpha）；
+  - 图标：`min(0.62×格宽, 0.505×格高)`≈155px，中心落在格高 40% 处；标签
+    12sp、距图标 12dp、单行省略；
+  - 落点：白色 1.2dp 圆角描边，边长 `iconSize + 2dp`、圆角 0.26×边长、白 170；
+  - 相邻页：白 44 alpha 的圆角竖条，只在页面静止时绘制，翻页动画期间不画；
+  - 页点：3.4dp 白点、间距 19dp、位于卡片底缘上方 16dp；非活动页白 110，
+    「+」白 150 并占用一个点槽位，整行（页点 + 「+」）在卡片内居中。
 - 分页：24 格/页（`gridCols × gridRows`），只使用「已安装应用的紧凑顺序」，
-  不创建空页。拖到卡片左右 36dp 边缘带停留 380ms 翻页，之后每 420ms 连续翻页，
-  过渡 220ms `fast_out_slow_in`；边缘带刻意收窄，保证第一列仍可落位。
+  不创建空页。拖到网格左右 12dp 边缘带停留 380ms 翻页，之后每 420ms 连续翻页，
+  过渡 220ms `fast_out_slow_in`；最外页没有邻页时边缘仍 clamp 到最外列落位，
+  避免松手回弹。
 - 落位：松手按「落在哪个格就占哪个格」重排 —— `removeAt(from)` 后
   `add(targetIndex, app)`，其间应用顺移。只有顺序真正变化才写
   `pref_drawerCustomOrder`；若原先是字母排序，同时把 `pref_drawerSortMode`
   置为 custom 并 Toast 提示一次。
-- 添加到主屏幕：卡片上方/下方空白区为目标，松手调用
-  `Workspace.addAppFromDrawer`（从当前页开始找第一个 1×1 空格），Toast 反馈
-  「已添加 / 空间不足」；应用仍留在抽屉，只创建桌面副本。
+- 添加到主屏幕：只有卡片上方/下方空白区（离卡片 8dp 死区之外）才算目标，
+  命中时整条空白带加深底色，提示条在带内垂直居中（高度受带高限制，底部带
+  约 41dp 时也能放下）；松手调用 `Workspace.addAppFromDrawer`（从当前页
+  开始找第一个 1×1 空格），Toast 反馈「已添加 / 空间不足」；应用仍留在抽屉，
+  只创建桌面副本。
 - 动画：重排用 `DragLayer.animateViewIntoPosition` 180ms 落格；加到主屏淡出
   140ms；无效落点 `animateDragViewToOriginalPosition` 160ms；返回键取消由
   `onDragEnd` 清空状态并恢复抽屉。
+- 条目菜单：`onDragStart` 后延迟 120ms 才弹 One UI 条目菜单（信息 / 添加至
+  主屏 / 卸载）；移动超过 8dp 立即取消延迟并关闭菜单，避免一拖就闪菜单。
+  定位不用 `showAsDropDown(source)`（列表行自带标签内边距，会把卡片顶到离图标
+  ~50dp 外），也不用网格图标尺寸估算浮层矩形（浮层带阴影边距，会多算 ~5dp）；
+  改为取 `DragView.getDragRegion()` 得到浮层内真实图标矩形，`showAtLocation`
+  以图标中心为卡片中心（左右 8dp clamp），指针尖端距图标 10dp；上方放不下时
+  翻到图标下方、指针翻到卡片顶部，指针 x 始终跟随图标中心。
 - K2 注意：Java raw `DragView` 参数在 Kotlin 声明处需写 `DragView<Launcher>`，
   否则报 "One type argument expected"。

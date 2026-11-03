@@ -376,3 +376,37 @@
 **文档**
 
 - `HANDOVER.md`/`tools/oneui-overlay.txt` 同步新文件与设置入口。
+
+## v0.23 — 抽屉拖拽编辑态几何校准与落点语义（2026-11-04）
+
+**功能**
+
+- **落点语义**：抽屉内长按拖折叠卡片进入自定义全屏覆盖层，松手位置即目标格——
+  落在网格内只重排（不创建主页图标），落在卡片上/下 8dp 死区之外才「添加到主屏幕」
+  （抽屉应用保留）；卡片左右边缘带仅翻分页，无邻页时按最外列落位，不再 flyBack。
+- **视觉对齐 One UI 真机**：卡片 2.8%/9.67%/90.29% 内缩、网格内缩 4/3.5/34dp、
+  格 250×306、图标 `min(0.62×格宽, 0.505×格高)`（中心 40%）、描边 `iconSize+2dp`
+  /0.26/白 170、点阵 1.3dp/白 125、页点 3.4dp/19dp、邻页条 11.5dp、边缘带 12dp、
+  圆角 24dp。真机截图实测网格 241..2077、格高 306、页点圆心 y=2124 一致。
+- **条目菜单**：拖起后延迟 120ms 显示（标题 + ⓘ + 添加至主屏幕 + 卸载），
+  位移超过 8dp 收起；位移基准改为首次 `onDragOver` 坐标（`onDragStart` 时
+  `dragObject.x/y` 仍为 0，旧逻辑会立刻误判位移）。定位改为
+  `DragView.getDragRegion()` 取浮层内真实图标矩形（排除阴影边距）后
+  `showAtLocation`：水平以图标为中心并 8dp clamp，指针尖端距图标 10dp；上方
+  放不下则翻到下方、指针翻到卡片顶部，指针 x 跟随图标。卡片宽 300dp、
+  底色 `#F7F7FA`。
+- 抽屉拖拽不再走 `startLongPressAction()` 的 `preDragCondition`（长按直接进编辑态），
+  该弹窗只保留给主页图标；拖拽期间 `appsView` 置 `INVISIBLE`，由覆盖层接管绘制。
+
+**构建**
+
+- 构建目录经 init 脚本 `layout.buildDirectory` 指向 `E:/OneUiBuild`（与项目同盘）。
+  跨盘符会让 KSP/protobuf 报 "this and base files have different roots"，写回仓库
+  `build/` 又会被 OneDrive 脱水成占位文件。
+
+**验证**
+
+- `:assembleLawnWithQuickstepGithubDebug` 构建通过。
+- 实测：网格内松手只重排、主页图标数量不变；上带松手新增主页图标且抽屉应用仍在；
+  长按不动 120ms 菜单弹出；无 AOSP 长按菜单。
+- 多页翻页/邻页边缘条受模拟器仅 16 个应用限制未覆盖。

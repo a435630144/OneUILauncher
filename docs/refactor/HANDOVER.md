@@ -50,7 +50,9 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 抽屉索引 | One UI 细灰轨道、拖动加粗、蓝色圆形字母气泡 | `OneUiFastScroller.kt`、`all_apps_fast_scroller.xml` |
 | 抽屉排序 | 字母 / 自定义两种模式，设置页拖拽调序并持久化 | `AppDrawerSortPreference.kt`、`LawnchairAlphabeticalAppsList.kt` |
 | 设置 | 四张 One UI 卡片、独立通知页、One UI 关于页 | `PreferencesDashboard.kt`、`NotificationsPreferences.kt`、`about/About.kt` |
-| 动画 | 图标按压 0.92 缩小、抽屉打开时网格行级错落 | `FastBitmapDrawable.java`、`AllAppsTransitionController.java` |
+| 动画 | 图标按压 0.92 缩小、抽屉打开时网格行级错落、抽屉打开时主屏 RenderEffect 模糊（API 31+） | `FastBitmapDrawable.java`、`AllAppsTransitionController.java`、`oneui/OneUiAppBlur.kt` |
+| 时钟样式 | 四种 RemoteViews 布局 + 主屏幕设置页单选 + 切换即时刷新小组件 | `oneui_clock_widget*.xml`、`PreferenceManager.clockStyle`、`OneUiClockWidgetController.applyStyleToWidgets` |
+| 拖拽菜单 | 拖起图标即弹 One UI 菜单（添加至主屏幕 / 卸载 / 应用信息），移动即收起 | `OneUiDrawerDragOverlay.showItemMenu` |
 | 文档 | 架构、验证记录、上游同步、交接说明 | `docs/refactor/` |
 
 ---
@@ -318,21 +320,38 @@ OneUiDrawerDragOverlay.kt`，由 `LawnchairLauncher.setupOneUiDrawerDragOverlay(
 - **接管**：拖起时 `appsView.visibility = INVISIBLE`（搜索胶囊一起隐藏），
   overlay 自绘深色 scrim、当前页网格、邻页边缘条、页点与「+」；`onDragEnd`
   恢复抽屉。抽屉本身不再缩放，也不再保留半透明列表。
-- **网格**：4×6 = 24 格/页，`cardRect` 左右 6.3%、上 9.2%、下 83.6%；定位点是
-  列分界 × 行分界的方形小点（0.9dp，白 70 alpha）。图标 `min(0.64×格宽,
-  0.52×格高)`，标签 12sp；落点描边 `iconSize + 10dp`、白 200 alpha。
-- **分页**：只使用已安装应用的紧凑顺序，24 个/页，不创建空页。拖到卡片左右
-  36dp 边缘带停留 380ms 翻页，之后每 420ms 连续翻页（220ms 过渡）。
+- **网格**：4×6 = 24 格/页，`cardRect` 左右各 2.8%、上 9.67%、下 90.29%
+  （1080×2400 下为 30..1050 × 232..2167），圆角 24dp；卡片内部再收
+  左/右 4dp、上 3.5dp、下 34dp 作为 `gridRect`。当前页是一张白 6 alpha 的
+  圆角卡片（几乎与背景同色），有前后页时屏幕左右各一条 11.5dp 邻页边缘条，
+  只覆盖网格高度。定位点是 3 列 × 5 行的内部交点方形小点（1.3dp，白 125
+  alpha）。图标 `min(0.62×格宽, 0.505×格高)`≈155px，中心在格高 40% 处，
+  标签 12sp、距图标 12dp；落点描边 `iconSize + 2dp`、圆角 0.26、白 170。
+  页点 3.4dp、间距 19dp、卡片底缘上方 16dp，非活动白 110；「+」白 150 并占
+  一个点槽位，整行在卡片内居中。
+- **分页**：只使用已安装应用的紧凑顺序，24 个/页，不创建空页。拖到网格左右
+  12dp 边缘带停留 380ms 翻页，之后每 420ms 连续翻页（220ms 过渡）；最外页
+  没有邻页时边缘仍 clamp 到最外列落位，不会松手回弹。
 - **落位**：落在哪个格就占哪个格（`removeAt` + `add(targetIndex)`，其余顺移），
   松手才写 `pref_drawerCustomOrder`；字母排序下重排会自动切到 custom，
   Toast「已切换为自定义排序」。顺序没变则不写盘、不弹提示。
-- **添加到主屏幕**：卡片上方/下方空白区，`Workspace.addAppFromDrawer` 从当前页
-  找第一个 1×1 空格，Toast「已添加到主屏幕 / 空间不足」；应用仍留在抽屉。
+- **添加到主屏幕**：只有卡片上方/下方空白区（离卡片 8dp 死区之外）才是目标，
+  命中时整条空白带加深底色，提示条在带内垂直居中；`Workspace.addAppFromDrawer`
+  从当前页找第一个 1×1 空格，Toast「已添加到主屏幕 / 空间不足」；应用仍留在
+  抽屉。
+- **条目菜单**：拖起后延迟 120ms 才显示 One UI 条目菜单（信息 / 添加至主屏 /
+  卸载）；移动超过 8dp 立即取消延迟并关闭，避免一拖就闪菜单。定位用
+  `DragView.getDragRegion()` 取浮层内真实图标矩形（排除阴影边距）后
+  `showAtLocation`：水平以图标为中心（8dp clamp），指针尖端距图标 10dp；上方
+  放不下则翻到下方、指针翻到卡片顶部，指针 x 始终跟随图标中心。
 - **框架协作**：`Workspace.onDragStart` 遇 `isDrawerDrag` 跳过常规起手（不切
-  SPRING_LOADED），`onDragEnd` 提前返回；`LauncherDragController` 不 `exitDrag`、
-  不 fling；`LauncherDragView.onStateTransitionComplete` 在 ALL_APPS 态保持
-  拖拽浮层可见；drop 时 `DragView` 需显式 `as DragView<Launcher>`（K2 下 raw
-  `DragView` 参数声明会报 "One type argument expected"）。
+  SPRING_LOADED），`onDragEnd` 提前返回；抽屉拖拽不再给
+  `BubbleTextView.startLongPressAction()` 的深链弹窗设 `preDragCondition`
+  （否则长按后要先移动 16dp 才真正起拖），长按直接进入编辑态；
+  `LauncherDragController` 不 `exitDrag`、不 fling；
+  `LauncherDragView.onStateTransitionComplete` 在 ALL_APPS 态保持拖拽浮层可见；
+  drop 时 `DragView` 需显式 `as DragView<Launcher>`（K2 下 raw `DragView`
+  参数声明会报 "One type argument expected"）。
 - **落位动画**：重排走 `DragLayer.animateViewIntoPosition`（180ms），加到主屏
   淡出 140ms，失败回飞 `animateDragViewToOriginalPosition`（160ms）。
 - **验证手法**：先 `input keyevent KEYCODE_HOME` 回到桌面再上滑打开抽屉，
