@@ -486,3 +486,27 @@
 **文档**
 
 - `CHANGELOG.md`、`tools/oneui-overlay.txt` 同步。
+
+## v0.27 — 自定义排序浏览态改为横向分页网格（2026-11-04）
+
+**修正**（严重 BUG：自定义排序出现纵向滚动轴）
+
+- 自定义排序模式的**浏览态**不再使用纵向滚动列表：新增
+  `OneUiDrawerPagedGrid`（PagedView 子类），按主屏网格（4×6）把应用切分为
+  横向分页，每页一个 GridLayout，cell 为 `BubbleTextView`（点击启动 +
+  长按进入拖拽编辑模式 + 使用计数全部复用），左右滑动翻页、无纵向滚动轴。
+- 挂载于 `appsView` 内部，随抽屉开合动画；仅自定义排序 + 抽屉全开 +
+  非搜索态显示，其余状态（字母序 / 搜索 / 离开抽屉）恢复滚动列表。
+- 页点自绘于每页底部（当前页高亮）。
+- 拖拽编辑模式（OneUiDrawerDragOverlay）接管期间分页网格隐藏，两者使用
+  同一份自定义顺序数据，无状态不一致。
+
+**验证**
+
+- `:assembleLawnWithQuickstepGithubDebug` 构建通过；分页浏览 / 翻页 /
+  长按拖拽入口待真机实测。
+
+**文档**
+
+- `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
+  `OneUiDrawerPagedGrid.kt`。

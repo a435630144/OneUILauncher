@@ -55,7 +55,7 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 拖拽菜单 | 拖起图标即弹 One UI 菜单（添加至主屏幕 / 卸载 / 应用信息），移动即收起；120ms 弹性弹出 | `OneUiDrawerDragOverlay.showItemMenu` |
 | 编辑态过渡 | 长按拖起 220ms：压暗渐入 + 分页卡片缩放归位 + 内容淡入（editProgress 驱动） | `OneUiDrawerDragOverlay.onDraw`、`startEditAnimation` |
 | 搜索胶囊 | 窄版居中（左右 64dp 内缩，One UI 8.5） | `search_container_all_apps.xml` |
-| 抽屉排序 | 字母 / 使用频率 / 自定义三种模式；频率按自维护启动计数降序 | `LawnchairAlphabeticalAppsList`、`LaunchCounter.kt` |
+| 抽屉排序 | 字母（滚动列表）/ 使用频率 / 自定义（**横向分页网格** `OneUiDrawerPagedGrid`）三种模式；频率按自维护启动计数降序 | `LawnchairAlphabeticalAppsList`、`LaunchCounter.kt`、`OneUiDrawerPagedGrid.kt` |
 | 文档 | 架构、验证记录、上游同步、交接说明 | `docs/refactor/` |
 
 ---

@@ -46,6 +46,7 @@ import app.lawnchair.gestures.config.GestureHandlerConfig
 import app.lawnchair.nexuslauncher.OverlayCallbackImpl
 import app.lawnchair.oneui.OneUiClockWidgetController
 import app.lawnchair.oneui.drawer.OneUiDrawerDragOverlay
+import app.lawnchair.oneui.drawer.OneUiDrawerPagedGrid
 import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.preferences2.PreferenceManager2
 import app.lawnchair.root.RootHelperManager
@@ -98,7 +99,8 @@ import kotlinx.coroutines.launch
 
 class LawnchairLauncher : QuickstepLauncher() {
     private val defaultOverlay by unsafeLazy { OverlayCallbackImpl(this) }
-    private val overlayDrawerDrag by unsafeLazy { OneUiDrawerDragOverlay(this) }
+    internal val overlayDrawerDrag by unsafeLazy { OneUiDrawerDragOverlay(this) }
+    internal val oneUiDrawerPagedGrid by unsafeLazy { OneUiDrawerPagedGrid(this) }
     private val prefs by unsafeLazy { PreferenceManager.getInstance(this) }
     private val preferenceManager2 by unsafeLazy { PreferenceManager2.getInstance(this) }
     private val insetsController by unsafeLazy { WindowInsetsControllerCompat(launcher.window, rootView) }
@@ -258,6 +260,7 @@ class LawnchairLauncher : QuickstepLauncher() {
         AppDatabase.INSTANCE.get(this).checkpointSync()
 
         setupOneUiDrawerDragOverlay()
+        setupOneUiDrawerPagedGrid()
     }
 
     /**
@@ -272,6 +275,48 @@ class LawnchairLauncher : QuickstepLauncher() {
         )
         dragController.addDragListener(overlayDrawerDrag)
         dragController.addDropTarget(overlayDrawerDrag)
+    }
+
+    /**
+     * Custom-sort drawer browsing uses the One UI paged grid instead of the
+     * scrolling list. Toggled by drawer state / sort mode / search state.
+     */
+    private fun setupOneUiDrawerPagedGrid() {
+        oneUiDrawerPagedGrid.visibility = android.view.View.GONE
+        appsView.addView(
+            oneUiDrawerPagedGrid,
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+        )
+        stateManager.addStateListener(pagedGridStateListener)
+    }
+
+    private fun syncOneUiDrawerPagedGrid() {
+        val inCustomAllApps = stateManager.state == com.android.launcher3.LauncherState.ALL_APPS &&
+            !appsView.isSearching &&
+            app.lawnchair.preferences.PreferenceManager.getInstance(this)
+                .drawerSortMode.get() == app.lawnchair.allapps.LawnchairAlphabeticalAppsList.SORT_CUSTOM
+        if (!inCustomAllApps) {
+            oneUiDrawerPagedGrid.visibility = android.view.View.GONE
+            appsView.appsRecyclerViewContainer.visibility = android.view.View.VISIBLE
+            return
+        }
+        val list = appsView.activeRecyclerView?.apps as? app.lawnchair.allapps.LawnchairAlphabeticalAppsList<*>
+        val items = list?.adapterItems
+            ?.asSequence()
+            ?.filter { it.viewType == com.android.launcher3.allapps.BaseAllAppsAdapter.VIEW_TYPE_ICON }
+            ?.mapNotNull { it.itemInfo as? com.android.launcher3.model.data.AppInfo }
+            ?.toList()
+            ?: emptyList()
+        oneUiDrawerPagedGrid.setApps(items)
+        appsView.appsRecyclerViewContainer.visibility = android.view.View.INVISIBLE
+        oneUiDrawerPagedGrid.visibility = android.view.View.VISIBLE
+    }
+
+    private val pagedGridStateListener = object : com.android.launcher3.statemanager.StateManager.StateListener<com.android.launcher3.LauncherState> {
+        override fun onStateTransitionComplete(finalState: com.android.launcher3.LauncherState) {
+            syncOneUiDrawerPagedGrid()
+        }
     }
 
     override fun collectStateHandlers(out: MutableList<StateHandler<LauncherState>>) {

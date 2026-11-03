@@ -71,3 +71,4 @@ lawnchair/src/app/lawnchair/oneui/LaunchCounter.kt
 lawnchair/src/app/lawnchair/ui/preferences/destinations/GesturePreferences.kt
 
 // v0.26: 编辑态过渡动画（onDraw editProgress 插值 + startEditAnimation）与菜单弹出动画（showItemMenu content 属性动画）——均位于 OneUiDrawerDragOverlay.kt，无新增文件。
+lawnchair/src/app/lawnchair/oneui/drawer/OneUiDrawerPagedGrid.kt
