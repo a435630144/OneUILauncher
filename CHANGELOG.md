@@ -510,3 +510,22 @@
 
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
+
+## v0.28 — 分页网格布局修复（2026-11-04）
+
+**修正**（v0.27 的分页网格显示空白 / 格子排成一行）
+
+- **根因**：`OneUiDrawerPagedGrid.Page` 曾用 `GridLayout` + weight spec，实测
+  24 个 cell 被排成一行 24 列（每格宽 45px、高全屏）；且 Page 的默认
+  LayoutParams 为 WRAP_CONTENT，空网格测出 0 宽，导致整个分页视图塌陷
+  （无障碍树中 bounds 宽 0）。
+- **修复**：`Page` 改为 `FrameLayout` 子类，`onLayout` 里按 cell 索引
+  （col = i % cols, row = i / cols）精确布局每格；Page 以
+  MATCH_PARENT 加入 PagedView（PagedView 负责测量与页间布局）；
+  删除冗余的 onMeasure/onLayout 重写。
+- 验证：抽屉分页网格 4 列正常渲染、25 个应用含溢出页、无纵向滚动轴、
+  窄居中搜索胶囊生效。
+
+**文档**
+
+- `tools/oneui-overlay.txt` 同步。

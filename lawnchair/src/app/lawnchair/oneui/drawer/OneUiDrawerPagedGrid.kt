@@ -18,10 +18,11 @@ package app.lawnchair.oneui.drawer
 
 import android.content.Context
 import android.graphics.Canvas
-import androidx.core.graphics.ColorUtils
+import android.graphics.Color
+import android.graphics.Paint
 import android.view.View
 import android.view.ViewGroup
-import android.widget.GridLayout
+import android.widget.FrameLayout
 import app.lawnchair.LawnchairLauncher
 import app.lawnchair.preferences.PreferenceManager
 import com.android.launcher3.BubbleTextView
@@ -33,6 +34,7 @@ import com.android.launcher3.model.data.AppInfo
 import com.android.launcher3.pageindicators.PageIndicator
 import com.android.launcher3.touch.ItemClickHandler
 import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 /**
  * One UI style paged grid for the app drawer's custom sort mode: apps are laid
@@ -49,7 +51,6 @@ class OneUiDrawerPagedGrid(
 
     private val launcher: Launcher = Launcher.getLauncher(context)
     private val prefs: PreferenceManager = PreferenceManager.getInstance(context)
-    private val pages = mutableListOf<Page>()
     private var apps: List<AppInfo> = emptyList()
 
     /** Rebuilds the pages from [list] (display order of the drawer). */
@@ -68,7 +69,11 @@ class OneUiDrawerPagedGrid(
         val perPage = columns() * rows()
         val wanted = ceil(apps.size / perPage.toDouble()).toInt().coerceAtLeast(1)
         while (childCount < wanted) {
-            addView(Page(context))
+            addView(
+                Page(context, columns(), rows()),
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
         }
         while (childCount > wanted) {
             removeViewAt(childCount - 1)
@@ -82,17 +87,14 @@ class OneUiDrawerPagedGrid(
     }
 
     private fun fillPage(page: Page, pageIndex: Int, perPage: Int) {
-        page.index = pageIndex
         page.removeAllViews()
         for (cell in 0 until perPage) {
             val index = pageIndex * perPage + cell
             val cellView = BubbleTextView(context).apply {
-                layoutParams = GridLayout.LayoutParams().apply {
-                    width = 0
-                    height = GridLayout.LayoutParams.WRAP_CONTENT
-                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-                    rowSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-                }
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
                 setOnClickListener(ItemClickHandler.INSTANCE)
                 setOnLongClickListener { v ->
                     startDrawerDrag(v as BubbleTextView)
@@ -123,32 +125,59 @@ class OneUiDrawerPagedGrid(
 
     private fun rows(): Int = launcher.deviceProfile.inv.numRows
 
-    /** One drawer page: a fixed grid whose cells host [BubbleTextView] icons. */
-    class Page(context: Context) : GridLayout(context), PageIndicator {
+    /**
+     * One drawer page: a fixed cols x rows grid whose cells host
+     * [BubbleTextView] icons, plus One UI page dots along the bottom edge.
+     */
+    class Page(
+        context: Context,
+        private val cols: Int,
+        private val rows: Int,
+    ) : FrameLayout(context), PageIndicator {
+
+        private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        init {
+            // The page draws its own page dots over the (transparent) content.
+            setWillNotDraw(false)
+        }
+
+        override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+            super.onLayout(changed, left, top, right, bottom)
+            val cellW = (width - paddingLeft - paddingRight).toFloat() / cols
+            val cellH = (height - paddingTop - paddingBottom).toFloat() / rows
+            for (i in 0 until childCount) {
+                val col = i % cols
+                val row = i / cols
+                getChildAt(i).layout(
+                    (paddingLeft + col * cellW).roundToInt(),
+                    (paddingTop + row * cellH).roundToInt(),
+                    (paddingLeft + (col + 1) * cellW).roundToInt(),
+                    (paddingTop + (row + 1) * cellH).roundToInt(),
+                )
+            }
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            if (childCount == 0) return
+            dotPaint.color = Color.WHITE
+            val dot = 2.6f * resources.displayMetrics.density
+            val gap = 14f * resources.displayMetrics.density
+            val y = height - 14f * resources.displayMetrics.density
+            val startX = width / 2f - (childCount - 1) * gap / 2f
+            for (i in 0 until childCount) {
+                dotPaint.alpha = if (i == index) 220 else 80
+                canvas.drawCircle(startX + i * gap, y, dot, dotPaint)
+            }
+        }
+
+        var index: Int = 0
 
         override fun setScroll(currentScroll: Int, totalScroll: Int) = Unit
 
         override fun setActiveMarker(activePage: Int) = Unit
 
         override fun setMarkersCount(numMarkers: Int) = Unit
-
-        override fun onDraw(canvas: Canvas) {
-            // One UI page dots, drawn inside the page bottom area.
-            if (childCount == 0) return
-            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-            val dot = 2.6f * resources.displayMetrics.density
-            val gap = 14f * resources.displayMetrics.density
-            val y = height - 12f * resources.displayMetrics.density
-            val startX = width / 2f - (childCount - 1) * gap / 2f
-            for (i in 0 until childCount) {
-                paint.color = ColorUtils.setAlphaComponent(
-                    android.graphics.Color.WHITE,
-                    if (i == index) 220 else 80,
-                )
-                canvas.drawCircle(startX + i * gap, y, dot, paint)
-            }
-        }
-
-        var index: Int = 0
     }
 }
