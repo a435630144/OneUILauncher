@@ -489,7 +489,7 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
   松开加速（§3.7）。
 - ~~抽屉开合：图标错落~~ ✅ 行级 12dp 错落归位（§3.8）；背景模糊未做。
 - ~~长按菜单：从触点弹性展开~~ ✅ `0.86` 起缩放 + 120ms 回弹（§3.9）。
-- 页面切换：One UI 的轻微视差与淡入。
+- ~~页面切换：轻微视差与淡入~~ ✅ 图标内容 30px 反向拖尾 + 相邻页 0.55 轻淡入（§ Workspace.updatePageScrollValues）。
 
 ---
 

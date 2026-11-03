@@ -1621,15 +1621,12 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 CellLayout child = (CellLayout) getChildAt(i);
                 if (child != null) {
                     float scrollProgress = getScrollProgress(screenCenter, child, i);
-                    float alpha = 1 - Math.abs(scrollProgress);
-                    if (mWorkspaceFadeInAdjacentScreens) {
-                        child.getShortcutsAndWidgets().setAlpha(alpha);
-                    } else {
-                        // Pages that are off-screen aren't important for accessibility.
-                        child.getShortcutsAndWidgets().setImportantForAccessibility(
-                                alpha > 0 ? IMPORTANT_FOR_ACCESSIBILITY_AUTO
-                                        : IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
-                    }
+                    // One UI: adjacent pages fade lightly instead of fully disappearing.
+                    float alpha = 1 - Math.abs(scrollProgress) * 0.55f;
+                    child.getShortcutsAndWidgets().setAlpha(alpha);
+                    child.getShortcutsAndWidgets().setImportantForAccessibility(
+                            alpha > 0.1f ? IMPORTANT_FOR_ACCESSIBILITY_AUTO
+                                    : IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
                 }
             }
         }
@@ -1642,6 +1639,11 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             if (child != null) {
                 float scrollProgress = getScrollProgress(screenCenter, child, i);
                 child.setScrollProgress(scrollProgress);
+                // One UI subtle parallax: page content trails the page frame slightly,
+                // so icons drift toward the center as the page slides in.
+                float parallax = scrollProgress * 30f;
+                child.getShortcutsAndWidgets().setTranslationX(
+                        mIsRtl ? -parallax : parallax);
             }
         }
     }
