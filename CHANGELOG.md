@@ -511,6 +511,34 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.30 — One UI 大文件夹 + 抽屉留白（2026-11-05）
+
+**应用文件夹（真机 ref09 复刻）**
+
+- **固定 3 列大图标网格**：`FolderGridOrganizer.createFolderGridOrganizer` 统一改为
+  (3, numFolderRows)——分页、预览判断、DB 坐标重算三条路径共享同一组织器，
+  网格与落库 rank/坐标保持一致。
+- **面板几何**：cell 宽 = 76% 屏宽 ÷ 3（`FolderPagedView` 常量），高宽比 1.22，
+  面板自然撑到 ~76% 屏宽；图标沿用 folderChildIconSizePx，间距随 cell 放大。
+- **标题栏移到顶部**：`user_folder_icon_normalized.xml` 中 footer（标题 + 页点）
+  移至网格上方，标题左对齐（26dp 起始 padding）、22sp medium 字重（One UI 头条样式）。
+- **毛玻璃面板**：`round_rect_folder.xml` 圆角 8dp→28dp；面板色改半透明
+  （light #E8F5F4F2 / dark #CC1F2020），配合打开时的工作区模糊。
+- **背景模糊**：`Folder.animateOpen` 完成回调与 `closeComplete` 接入
+  `OneUiAppBlur`（软件渲染自动跳过）。
+- 文件夹内 + / ○ 顶部按钮未实现（One UI 的添加应用与排序编辑，后续任务）。
+
+**应用抽屉**
+
+- 顶部 64dp 留白（`oneui_allapps_top_spacing`）：滚动列表与自定义排序分页网格
+  双路径生效，首行不再贴状态栏。
+- 自定义排序分页网格模式下隐藏右侧字母滚动条（滚动条只属于列表模式）。
+
+**验证**
+
+- 模拟器：抽屉首行离开状态栏、页点 2 个居中、无滚动条；主屏/时钟/hotseat 正常。
+- 文件夹 UI adb 手势无法模拟（已知限制），待真机验证；构建通过、静态审查一致。
+
 ## v0.29 — 主屏 One UI 页点 + 图标消失根因修复 + 抽屉细节修正（2026-11-04）
 
 **修正：主屏图标全部消失（用户报告"重启/长按后桌面图标全没了"）**

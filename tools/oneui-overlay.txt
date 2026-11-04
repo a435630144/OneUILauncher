@@ -84,3 +84,13 @@ lawnchair/res/values/config.xml
 // 不可点；现以 measuredWidth 早退 + NaN/Inf 跳过 + alpha 钳制 [0.45,1] 防护。
 // 抽屉：OneUiDrawerPagedGrid 页点上移至顶层 onDraw（数量=页数、搜索栏上方）、
 // 24dp 底部 padding、bottomMargin=72+8dp 避开搜索胶囊、cell gravity 水平居中。
+
+// v0.30: One UI 大文件夹——FolderGridOrganizer 固定 3 列（分页/预览/DB 同源）、
+// FolderPagedView cell 76%屏宽/3、user_folder_icon_normalized.xml 标题栏移顶部、
+// round_rect_folder.xml 28dp 圆角、folder_background_* 半透明、Folder.java 22sp 标题
+// + animateOpen/closeComplete 接 OneUiAppBlur；抽屉 64dp 顶部留白（列表+pagedGrid）、
+// pagedGrid 模式隐藏 fastscroller。
+src/com/android/launcher3/folder/FolderGridOrganizer.java
+src/com/android/launcher3/folder/FolderPagedView.java
+res/layout/user_folder_icon_normalized.xml
+res/drawable/round_rect_folder.xml
