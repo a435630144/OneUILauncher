@@ -39,7 +39,8 @@ class EditModeState(id: Int) : LauncherState(id, StatsLogManager.LAUNCHER_STATE_
     override fun <T> getTransitionDuration(context: T, isToState: Boolean): Int where
     T : Context?,
     T : ActivityContext? {
-        return 150
+        // One UI page overview zooms in softly (~300ms).
+        return 300
     }
 
     override fun <T> getDepthUnchecked(context: T): Float where T : Context?, T : ActivityContext? {
@@ -51,13 +52,14 @@ class EditModeState(id: Int) : LauncherState(id, StatsLogManager.LAUNCHER_STATE_
     }
 
     override fun getWorkspaceScaleAndTranslation(launcher: Launcher): ScaleAndTranslation {
-        val scale = launcher.deviceProfile.getWorkspaceSpringLoadScale(launcher)
-        return ScaleAndTranslation(scale, 0f, 0f)
+        // One UI page overview: cards shrink to ~78% so the edges of the
+        // neighbouring pages peek in on both sides.
+        return ScaleAndTranslation(0.78f, 0f, 0f)
     }
 
     override fun getHotseatScaleAndTranslation(launcher: Launcher): ScaleAndTranslation {
-        val scale = launcher.deviceProfile.getWorkspaceSpringLoadScale(launcher)
-        return ScaleAndTranslation(scale, 0f, 0f)
+        // The hotseat is replaced by the editor's bottom quick actions.
+        return ScaleAndTranslation(0.5f, 0f, launcher.deviceProfile.heightPx.toFloat())
     }
 
     override fun getWorkspaceBackgroundAlpha(launcher: Launcher): Float {

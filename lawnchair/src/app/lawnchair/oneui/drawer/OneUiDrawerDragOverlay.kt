@@ -364,6 +364,9 @@ class OneUiDrawerDragOverlay(
                         }
                     }
                 }
+                // The reflow preview already moved the neighbours; reset them
+                // instantly so the rebuilt grid (final order) takes over.
+                (launcher as? LawnchairLauncher)?.oneUiDrawerPagedGrid?.clearPreviewShift(instant = true)
                 animateDragViewToTarget(dragView)
             }
             else -> flyBack(dragView)
@@ -375,6 +378,7 @@ class OneUiDrawerDragOverlay(
         targetIndex = -1
         targetRect.setEmpty()
         addToHomeEdge = 0
+        updatePreviewShift()
         invalidate()
     }
 
@@ -455,6 +459,7 @@ class OneUiDrawerDragOverlay(
             addToHomeEdge = if (y < card.top) 1 else 2
             targetIndex = -1
             targetRect.setEmpty()
+            updatePreviewShift()
             stopEdgeFlip()
             invalidate()
             return
@@ -472,6 +477,7 @@ class OneUiDrawerDragOverlay(
         if (direction != 0 && page + direction in 0 until pageCount) {
             targetIndex = -1
             targetRect.setEmpty()
+            updatePreviewShift()
             startEdgeFlip(direction)
             invalidate()
             return
@@ -505,6 +511,23 @@ class OneUiDrawerDragOverlay(
             // Empty cell on the last page: append to the end of the order.
             pageStart + cell >= list.size && page == pageCount - 1 -> list.size
             else -> -1
+        }
+        updatePreviewShift()
+    }
+
+    /**
+     * One UI feel: while hovering, the icons that will be displaced slide
+     * aside in real time (instead of snapping when the finger lifts).
+     */
+    private fun updatePreviewShift() {
+        val grid = (launcher as? LawnchairLauncher)?.oneUiDrawerPagedGrid ?: return
+        val app = dragged ?: return
+        val list = ordered ?: return
+        val from = list.indexOf(app)
+        if (targetIndex < 0 || from < 0 || from == targetIndex) {
+            grid.clearPreviewShift()
+        } else {
+            grid.previewShift(from, targetIndex)
         }
     }
 

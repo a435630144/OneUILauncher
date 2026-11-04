@@ -101,6 +101,7 @@ class LawnchairLauncher : QuickstepLauncher() {
     private val defaultOverlay by unsafeLazy { OverlayCallbackImpl(this) }
     internal val overlayDrawerDrag by unsafeLazy { OneUiDrawerDragOverlay(this) }
     internal val oneUiDrawerPagedGrid by unsafeLazy { OneUiDrawerPagedGrid(this) }
+    internal val oneUiPageEditOverlay by unsafeLazy { app.lawnchair.oneui.OneUiPageEditOverlay(this) }
     private val prefs by unsafeLazy { PreferenceManager.getInstance(this) }
     private val preferenceManager2 by unsafeLazy { PreferenceManager2.getInstance(this) }
     private val insetsController by unsafeLazy { WindowInsetsControllerCompat(launcher.window, rootView) }
@@ -261,6 +262,17 @@ class LawnchairLauncher : QuickstepLauncher() {
 
         setupOneUiDrawerDragOverlay()
         setupOneUiDrawerPagedGrid()
+        setupOneUiPageEditOverlay()
+    }
+
+    /** Mounts the One UI page overview editor above everything else. */
+    private fun setupOneUiPageEditOverlay() {
+        dragLayer.addView(
+            oneUiPageEditOverlay,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
+        oneUiPageEditOverlay.onAttached()
     }
 
     /**
@@ -295,7 +307,25 @@ class LawnchairLauncher : QuickstepLauncher() {
         stateManager.addStateListener(pagedGridStateListener)
     }
 
+    /**
+     * The search bar sits above the navigation bar inset, so the reserved
+     * bottom space must include the inset — otherwise the page dots and the
+     * last icon row end up inside the search capsule (real devices with
+     * gesture navigation have a much larger inset than the emulator).
+     */
+    private fun updatePagedGridBottomMargin() {
+        val lp = oneUiDrawerPagedGrid.layoutParams as? android.view.ViewGroup.MarginLayoutParams ?: return
+        val bottom = resources.getDimensionPixelSize(com.android.launcher3.R.dimen.search_box_container_height) +
+            resources.getDimensionPixelSize(com.android.launcher3.R.dimen.oneui_search_bar_bottom_margin) +
+            dragLayer.getInsets().bottom
+        if (lp.bottomMargin != bottom) {
+            lp.bottomMargin = bottom
+            oneUiDrawerPagedGrid.requestLayout()
+        }
+    }
+
     private fun syncOneUiDrawerPagedGrid() {
+        updatePagedGridBottomMargin()
         val inCustomAllApps = stateManager.state == com.android.launcher3.LauncherState.ALL_APPS &&
             !appsView.isSearching &&
             app.lawnchair.preferences.PreferenceManager.getInstance(this)
@@ -396,17 +426,10 @@ class LawnchairLauncher : QuickstepLauncher() {
     }
 
     override fun showDefaultOptions(x: Float, y: Float) {
-        val showWallpaperCarousel = "+carousel" in preferenceManager2.launcherPopupOrder.firstBlocking()
-
-        if (showWallpaperCarousel) {
-            show<LawnchairLauncher>(
-                this,
-                getPopupTarget(x, y),
-                OptionsPopupView.getOptions(this),
-            )
-        } else {
-            super.showDefaultOptions(x, y)
-        }
+        // One UI: long-pressing empty space opens the page overview editor;
+        // the previous popup items (wallpaper / widgets / settings) moved to
+        // the editor's bottom quick actions.
+        stateManager.goToState(com.android.launcher3.LauncherState.EDIT_MODE)
     }
 
     private fun <T> show(

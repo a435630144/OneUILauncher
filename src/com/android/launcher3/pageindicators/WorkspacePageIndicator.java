@@ -40,6 +40,7 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
     private static final float PLUS_HALF_DP = 6f;
     private static final float PLUS_HIT_WIDTH_DP = 44f;
     private static final float PLUS_LEAD_GAP_DP = 12f;
+    private static final float EDIT_LEAD_OFFSET_DP = 6f;
 
     private final Launcher mLauncher;
     private final Paint mMarkerPaint;
@@ -110,6 +111,9 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
 
     @Override
     protected void onDraw(Canvas canvas) {
+        android.util.Log.d("PageRail", "onDraw pages=" + mNumPages
+                + " edit=" + mInEditMode + " alpha=" + getAlpha()
+                + " vis=" + getVisibility() + " w=" + getWidth());
         if (mNumPages <= 0) {
             return;
         }
@@ -118,30 +122,57 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
         float dotR = DOT_RADIUS_DP * density;
 
         float centerY = getHeight() / 2f;
+        // Edit mode reserves a leading list button (One UI ≡).
         float startX = getWidth() / 2f - (mNumPages - 1) * gap / 2f;
+        if (mInEditMode) {
+            startX += EDIT_LEAD_OFFSET_DP * density;
+            drawListButton(canvas, startX - gap, centerY);
+        }
+
+        int defaultPage = mLauncher.getWorkspace().getUserDefaultPage();
 
         for (int i = 0; i < mNumPages; i++) {
             float cx = startX + i * gap;
-            if (i == mActivePage) {
+            if (i == defaultPage) {
+                // The house marks the home-key destination, not the visible page.
                 drawHouse(canvas, cx, centerY,
                         HOUSE_WIDTH_DP * density, HOUSE_HEIGHT_DP * density);
             } else {
                 mMarkerPaint.setStyle(Paint.Style.FILL);
-                mMarkerPaint.setAlpha(150);
-                canvas.drawCircle(cx, centerY, dotR, mMarkerPaint);
+                if (i == mActivePage) {
+                    mMarkerPaint.setAlpha(235);
+                    canvas.drawCircle(cx, centerY, dotR * 1.25f, mMarkerPaint);
+                } else {
+                    mMarkerPaint.setAlpha(150);
+                    canvas.drawCircle(cx, centerY, dotR, mMarkerPaint);
+                }
                 mMarkerPaint.setStyle(Paint.Style.STROKE);
                 mMarkerPaint.setAlpha(255);
             }
         }
 
-        // The plus button stays visible at the end of the rail: on One UI it
-        // lives in the page-overview editor, but this build has no overview
-        // entry point yet, so the plus is exposed directly (ref04).
-        float plusCx = startX + (mNumPages - 1) * gap + PLUS_LEAD_GAP_DP * density
-                + PLUS_HALF_DP * density;
-        mPlusHitLeft = plusCx - PLUS_HIT_WIDTH_DP * density / 2f;
-        mPlusHitRight = plusCx + PLUS_HIT_WIDTH_DP * density / 2f;
-        drawPlus(canvas, plusCx, centerY, PLUS_HALF_DP * density);
+        // The plus button exists only in edit mode, after the markers.
+        if (mInEditMode) {
+            float plusCx = startX + (mNumPages - 1) * gap + PLUS_LEAD_GAP_DP * density
+                    + PLUS_HALF_DP * density;
+            mPlusHitLeft = plusCx - PLUS_HIT_WIDTH_DP * density / 2f;
+            mPlusHitRight = plusCx + PLUS_HIT_WIDTH_DP * density / 2f;
+            drawPlus(canvas, plusCx, centerY, PLUS_HALF_DP * density);
+        } else {
+            mPlusHitLeft = Float.MAX_VALUE;
+            mPlusHitRight = Float.MAX_VALUE;
+        }
+    }
+
+    /** One UI edit-mode list button (three horizontal bars). */
+    private void drawListButton(Canvas canvas, float cx, float cy) {
+        float half = 4.5f * getResources().getDisplayMetrics().density;
+        float gapY = 3.2f * getResources().getDisplayMetrics().density;
+        mMarkerPaint.setAlpha(220);
+        for (int i = -1; i <= 1; i++) {
+            canvas.drawLine(cx - half, cy + i * gapY, cx + half, cy + i * gapY, mMarkerPaint);
+        }
+        mMarkerPaint.setAlpha(255);
     }
 
     /** One UI home marker: a simple outlined house with a peaked roof. */
@@ -172,6 +203,10 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        // The rail is interactive only in edit mode (the plus button).
+        if (!mInEditMode) {
+            return false;
+        }
         float x = event.getX();
         boolean inPlusZone = x >= mPlusHitLeft && x <= mPlusHitRight;
         if (!inPlusZone) {

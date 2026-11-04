@@ -147,6 +147,9 @@ class PreferenceManager private constructor(private val context: Context) :
     /** One UI home screen clock style: 0 = default, 1 = compact, 2 = time only, 3 = centered. */
     val clockStyle = IntPref("pref_clockStyle", 0)
 
+    /** One UI page overview: screen id chosen with the house button as the home-key destination. */
+    val oneUiDefaultPage = IntPref("pref_oneuiDefaultPage", 0)
+
     val recentsActionScreenshot = BoolPref("pref_recentsActionScreenshot", !isOnePlusStock)
     val recentsActionShare = BoolPref("pref_recentsActionShare", isOnePlusStock)
     val recentsActionLens = BoolPref("pref_recentsActionLens", true)

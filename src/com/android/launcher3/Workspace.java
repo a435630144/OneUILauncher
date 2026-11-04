@@ -103,6 +103,7 @@ import com.android.launcher3.logging.StatsLogManager;
 import com.android.launcher3.logging.StatsLogManager.LauncherEvent;
 import com.android.launcher3.model.data.AppInfo;
 import com.android.launcher3.model.data.AppPairInfo;
+import com.android.launcher3.model.data.CollectionInfo;
 import com.android.launcher3.model.data.FolderInfo;
 import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.LauncherAppWidgetInfo;
@@ -941,6 +942,53 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
     public void removeExtraEmptyScreen(boolean stripEmptyScreens) {
         removeExtraEmptyScreenDelayed(0, stripEmptyScreens, null);
+    }
+
+    /**
+     * One UI page overview: deletes the page at {@param pageIndex}, removing
+     * every item it hosts from the database (icons, shortcuts, folders with
+     * their contents and widgets). The page disappears immediately like the
+     * One UI trash button.
+     */
+    public void removePageAt(int pageIndex) {
+        if (mLauncher.isWorkspaceLoading() || pageIndex < 0 || pageIndex >= getChildCount()) {
+            return;
+        }
+        CellLayout cl = (CellLayout) getChildAt(pageIndex);
+        if (cl == null) {
+            return;
+        }
+        int screenId = getCellLayoutId(cl);
+        ShortcutAndWidgetContainer container = cl.getShortcutsAndWidgets();
+        ArrayList<ItemInfo> plainItems = new ArrayList<>();
+        for (int i = container.getChildCount() - 1; i >= 0; i--) {
+            ItemInfo info = (ItemInfo) container.getChildAt(i).getTag();
+            if (info instanceof LauncherAppWidgetInfo) {
+                mLauncher.getModelWriter().deleteWidgetInfo(
+                        (LauncherAppWidgetInfo) info, mLauncher.getAppWidgetHolder(), null);
+            } else if (info instanceof CollectionInfo) {
+                mLauncher.getModelWriter().deleteCollectionAndContentsFromDatabase((CollectionInfo) info);
+            } else if (info != null) {
+                plainItems.add(info);
+            }
+        }
+        if (!plainItems.isEmpty()) {
+            mLauncher.getModelWriter().deleteItemsFromDatabase(plainItems, "oneui_page_delete");
+        }
+        mUserCreatedPages.remove(screenId);
+
+        int currentPage = getNextPage();
+        mWorkspaceScreens.remove(screenId);
+        mScreenOrder.removeValue(screenId);
+        removeView(cl);
+        if (mPageIndicator != null) {
+            mPageIndicator.setMarkersCount(getChildCount());
+        }
+        // Stay on the same visual index (or the last page if we removed the tail).
+        int target = Math.min(currentPage, getChildCount() - 1);
+        if (target >= 0) {
+            snapToPage(target);
+        }
     }
 
     /**
@@ -3817,11 +3865,32 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     }
 
     /**
-     * Calls {@link #snapToPage(int)} on the {@link #DEFAULT_PAGE}, then requests
+     * The page the user picked as default home with the One UI page-overview
+     * house button; falls back to the first page.
+     */
+    public int getUserDefaultPage() {
+        int screenId = app.lawnchair.preferences.PreferenceManager.getInstance(getContext())
+                .getOneUiDefaultPage().get();
+        int index = mScreenOrder.indexOf(screenId);
+        return index >= 0 ? index : DEFAULT_PAGE;
+    }
+
+    /** Marks the page at {@param pageIndex} as the home-key destination. */
+    public void setUserDefaultPage(int pageIndex) {
+        if (pageIndex < 0 || pageIndex >= getChildCount()) {
+            return;
+        }
+        int screenId = getCellLayoutId((CellLayout) getChildAt(pageIndex));
+        app.lawnchair.preferences.PreferenceManager.getInstance(getContext())
+                .getOneUiDefaultPage().set(screenId);
+    }
+
+    /**
+     * Calls {@link #snapToPage(int)} on the user's default page, then requests
      * focus on it.
      */
     public void moveToDefaultScreen() {
-        int page = DEFAULT_PAGE;
+        int page = getUserDefaultPage();
         if (!workspaceInModalState() && getNextPage() != page) {
             snapToPage(page);
         }

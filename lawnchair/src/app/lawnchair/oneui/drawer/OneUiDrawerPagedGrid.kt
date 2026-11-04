@@ -155,6 +155,67 @@ class OneUiDrawerPagedGrid(
         return true
     }
 
+    /**
+     * Live "make room" preview while a drag hovers: the icons between the
+     * source and the landing index slide one cell aside with a short
+     * animation, exactly like the One UI drawer, instead of snapping at
+     * drop time. [from]/[to] are indices into the flat display order.
+     */
+    fun previewShift(from: Int, to: Int) {
+        if (from == to || from < 0 || to < 0 || from >= apps.size) {
+            clearPreviewShift()
+            return
+        }
+        val perPage = columns() * rows()
+        val pageIdx = mCurrentPage.coerceIn(0, childCount - 1)
+        val page = getPageAt(pageIdx) as? Page ?: return
+        val pageStart = pageIdx * perPage
+        val pageEnd = pageStart + perPage
+        val samePage = from in pageStart until pageEnd && to in pageStart..pageEnd
+        val cellW = page.width.toFloat() / columns()
+        val cellH = page.height.toFloat() / rows()
+
+        for (viewIdx in 0 until page.childCount) {
+            val view = page.getChildAt(viewIdx) ?: continue
+            val globalIdx = pageStart + viewIdx
+            val target = when {
+                globalIdx == from -> globalIdx // source is lifted by the DragView
+                samePage && from < to && globalIdx > from && globalIdx <= to -> globalIdx - 1
+                samePage && from > to && globalIdx >= to && globalIdx < from -> globalIdx + 1
+                !samePage && from !in pageStart until pageEnd && globalIdx >= to && globalIdx < pageEnd -> globalIdx + 1
+                !samePage && from in pageStart until pageEnd && globalIdx >= from && globalIdx < pageEnd -> globalIdx - 1
+                else -> globalIdx
+            }
+            if (target == globalIdx) {
+                if (view.translationX != 0f || view.translationY != 0f) {
+                    view.animate().translationX(0f).translationY(0f).setDuration(120L).start()
+                }
+                continue
+            }
+            val tx = (target % columns() - viewIdx % columns()) * cellW
+            val ty = (target / columns() - viewIdx / columns()) * cellH
+            view.animate().translationX(tx).translationY(ty).setDuration(150L).start()
+        }
+    }
+
+    /** Animates (or instantly resets with [instant]) every shifted cell back home. */
+    fun clearPreviewShift(instant: Boolean = false) {
+        for (pageIdx in 0 until childCount) {
+            val page = getPageAt(pageIdx) as? Page ?: continue
+            for (viewIdx in 0 until page.childCount) {
+                val view = page.getChildAt(viewIdx) ?: continue
+                if (view.translationX == 0f && view.translationY == 0f) continue
+                if (instant) {
+                    view.animate().cancel()
+                    view.translationX = 0f
+                    view.translationY = 0f
+                } else {
+                    view.animate().translationX(0f).translationY(0f).setDuration(140L).start()
+                }
+            }
+        }
+    }
+
     private fun columns(): Int = launcher.deviceProfile.inv.numColumns
 
     private fun rows(): Int = launcher.deviceProfile.inv.numRows

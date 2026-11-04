@@ -92,6 +92,14 @@
     <string name="oneui_drawer_section_headers_description">Show a letter above each group of apps. Turn off for the plain One UI grid, which only uses the right-hand index.</string>
     <string name="oneui_drawer_drag_add_to_home">Add to Home screen</string>
     <string name="oneui_drawer_drag_added">Added to Home screen</string>
+
+    <!-- One UI page overview editor -->
+    <string name="oneui_edit_wallpaper">Wallpaper and style</string>
+    <string name="oneui_edit_theme">Themes</string>
+    <string name="oneui_edit_widgets">Widgets</string>
+    <string name="oneui_edit_settings">Settings</string>
+    <string name="oneui_page_delete_title">Delete page?</string>
+    <string name="oneui_page_delete_message">This page holds %1$d item(s). Deleting the page removes them from the home screen.</string>
     <string name="oneui_drawer_drag_alphabetical">Switched to custom order</string>
     <string name="oneui_drawer_drag_no_space">Not enough room on the Home screen</string>
     <string name="oneui_clock_widget_description">One UI clock and date for the home screen</string>
