@@ -102,3 +102,9 @@ res/drawable/round_rect_folder.xml
 // 抽屉修复：pagedGrid bottomMargin 动态含 dragLayer insets（真机手势导航）、
 // all_apps_rv_layout clipToPadding=true（动画期间图标超界）；拖拽让位预览
 // OneUiDrawerPagedGrid.previewShift + OneUiDrawerDragOverlay 悬停挂接。
+
+// v0.32: 抽屉文件夹——DrawerFolderStore.kt（token 序列 K:/F: + drawerFolders JSON）、
+// OneUiDrawerPagedGrid.setEntries（文件夹合成 2x2 预览 + 成员弹窗）、
+// OneUiDrawerDragOverlay 合并/加入/拖动分支 + onDrop 后 syncOneUiDrawerPagedGrid、
+// LawnchairLauncher.buildDrawerEntries（顺序单一来源，编辑态与浏览态共用）、
+// applyCustomOrder token 兼容。

@@ -511,6 +511,31 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.32 — 抽屉文件夹 + 走查修复（2026-11-05）
+
+**抽屉文件夹（One UI 抽屉叠放合并复刻）**
+
+- **数据**：`drawerCustomOrder` 升级为 token 序列（`K:<componentKey>` /
+  `F:<folderId>`，兼容旧无前缀行）；文件夹内容存于新偏好 `drawerFolders`
+  （JSON：title + 成员 key 列表，`DrawerFolderStore`）。
+- **合并交互**：编辑态拖 A 到 B 上 → 建文件夹（拖出的 app 离开顶层序列）；
+  拖到已有文件夹上 → 加入该文件夹；文件夹本身可拖动换位（经首个成员占位）。
+- **渲染**：文件夹 cell 显示 2×2 合成预览（圆角底 + 最多四个成员图标）与
+  文件夹名；点击弹出成员列表（点击启动，主题色文字）。
+- **让位预览兼容**：占位与文件夹条目在展示序列里同构，previewShift/drop
+  重建无需特判。
+
+**走查修复（本轮代码审核）**
+
+1. 文件夹占位在拖拽中因 tempApp 实例不同而 `indexOf` 失败 → 改按
+   ComponentKey 匹配（文件夹可拖动）。
+2. 字母排序 `applyCustomOrder` 不认识 token 前缀 → 剥 `K:` 前缀、跳过
+   `F:` 行（字母模式下自定义顺序正确失效，保持字母序）。
+3. drop 提交后分页网格不刷新（松手后仍是旧顺序）→ onDrop 末尾统一
+   `syncOneUiDrawerPagedGrid()` 重建。
+4. 拖文件夹到上/下空白区会把占位 app 复制到主屏 → 文件夹改为回弹。
+5. 文件夹弹窗浅色主题下白字不可读 → 文字色取 `textColorPrimary`。
+
 ## v0.31 — One UI 页面总览编辑器 + 抽屉真机修复（2026-11-05）
 
 **页面总览编辑器（真机截图复刻）**
