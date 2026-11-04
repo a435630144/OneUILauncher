@@ -40,6 +40,15 @@ object OneUiAppBlur {
             return
         }
         val workspace: android.view.View = launcher.workspace
+        // Software rendering (swiftshader / `-gpu off` emulators) renders
+        // RenderEffect blur as a black screen — only blur when hardware accelerated.
+        if (!workspace.isHardwareAccelerated) {
+            if (lastRadius > 0f) {
+                workspace.setRenderEffect(null)
+                lastRadius = 0f
+            }
+            return
+        }
         val radius = (revealFraction.coerceIn(0f, 1f) * MAX_RADIUS)
         if (radius < 1f) {
             if (lastRadius >= 1f) {
