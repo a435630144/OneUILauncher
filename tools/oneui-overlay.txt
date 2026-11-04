@@ -108,3 +108,7 @@ res/drawable/round_rect_folder.xml
 // OneUiDrawerDragOverlay 合并/加入/拖动分支 + onDrop 后 syncOneUiDrawerPagedGrid、
 // LawnchairLauncher.buildDrawerEntries（顺序单一来源，编辑态与浏览态共用）、
 // applyCustomOrder token 兼容。
+
+// v0.33: 编辑器 🗑 卡片上方延长区 + DOWN 命中才接管事件流（点击卡片退出编辑）+
+// ≡ 均匀间距（负一屏槽位保留，功能待定）；页点行实心小房子 8.6dp + 圆点 r3.2dp 等大；
+// 主屏卡死根因：stripEmptyScreens 删除当前页后 setCurrentPage 越界 → 钳制+snapToPage。
