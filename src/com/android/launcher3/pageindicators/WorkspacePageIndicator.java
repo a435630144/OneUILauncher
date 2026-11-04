@@ -32,10 +32,12 @@ import com.android.launcher3.util.Themes;
  */
 public class WorkspacePageIndicator extends View implements Insettable, PageIndicator {
 
-    private static final float DOT_RADIUS_DP = 1.8f;
+    private static final float DOT_RADIUS_DP = 3.2f;
     private static final float MARKER_GAP_DP = 16f;
-    private static final float HOUSE_WIDTH_DP = 11.5f;
-    private static final float HOUSE_HEIGHT_DP = 11f;
+    // Solid house roughly the same size as a dot: at a glance the rail reads
+    // as dots only, like the One UI page rail.
+    private static final float HOUSE_WIDTH_DP = 8.6f;
+    private static final float HOUSE_HEIGHT_DP = 8.4f;
     private static final float HOUSE_STROKE_DP = 1.6f;
     private static final float PLUS_HALF_DP = 6f;
     private static final float PLUS_HIT_WIDTH_DP = 44f;
@@ -175,7 +177,7 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
         mMarkerPaint.setAlpha(255);
     }
 
-    /** One UI home marker: a simple outlined house with a peaked roof. */
+    /** One UI home marker: a solid house with a peaked roof. */
     private void drawHouse(Canvas canvas, float cx, float cy, float w, float h) {
         float halfW = w / 2f;
         float halfH = h / 2f;
@@ -188,7 +190,7 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
         mHousePath.lineTo(cx + halfW, eaveY);
         mHousePath.lineTo(cx + halfW, cy + halfH);
         mHousePath.close();
-        mMarkerPaint.setStyle(Paint.Style.STROKE);
+        mMarkerPaint.setStyle(Paint.Style.FILL);
         mMarkerPaint.setAlpha(255);
         canvas.drawPath(mHousePath, mMarkerPaint);
     }

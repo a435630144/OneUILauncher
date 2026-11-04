@@ -151,23 +151,18 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
             width / 2 + homeSize / 2, (14f * dp).roundToInt() + homeSize)
         drawHouse(canvas, homeRect.exactCenterX(), homeRect.exactCenterY(), 20f * dp, 20f * dp)
 
-        // Trash button: top center of the current page card.
+        // Trash button: in the strip the page card visually extends upwards —
+        // outside the card content, so it never overlaps widgets like the clock.
         if (pageCard(pageCardRect, currentPage) && !isAddCardPage(currentPage)) {
             val t = (40f * dp).roundToInt()
+            val trashCenterY = pageCardRect.top - (26f * dp).roundToInt()
             trashRect.set(
                 pageCardRect.centerX() - t / 2,
-                pageCardRect.top + (16f * dp).roundToInt(),
+                trashCenterY - t / 2,
                 pageCardRect.centerX() + t / 2,
-                pageCardRect.top + (16f * dp).roundToInt() + t,
+                trashCenterY + t / 2,
             )
             drawTrash(canvas, trashRect.exactCenterX(), trashRect.exactCenterY(), 11f * dp)
-
-            // Divider under the trash, like the One UI page card header.
-            val dividerY = pageCardRect.top + 76f * dp
-            canvas.drawLine(
-                pageCardRect.left + 16f * dp, dividerY,
-                pageCardRect.right - 16f * dp, dividerY, paint,
-            )
         } else {
             trashRect.setEmpty()
         }
@@ -215,7 +210,7 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
         }
     }
 
-    private fun drawHouse(canvas: Canvas, cx: Float, cy: Float, w: Float, h: Float) {
+    private fun drawHouse(canvas: Canvas, cx: Float, cy: Float, w: Float, h: Float, fill: Boolean = false) {
         val half = w / 2f
         val eave = cy - h / 2 + h * 0.32f
         path.reset()
@@ -225,7 +220,10 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
         path.lineTo(cx + half, eave)
         path.lineTo(cx + half, cy + h / 2)
         path.close()
+        val oldStyle = paint.style
+        paint.style = if (fill) Paint.Style.FILL_AND_STROKE else oldStyle
         canvas.drawPath(path, paint)
+        paint.style = oldStyle
     }
 
     /**
@@ -238,30 +236,35 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
         val pages = workspace.childCount
         if (pages <= 0) return
         val gap = 16f * dp
-        val dotR = 1.8f * dp
+        val dotR = 3.2f * dp
         val defaultPage = workspace.getUserDefaultPage()
         val activePage = currentPageIndex()
 
-        val contentW = pages * gap + 24f * dp // markers + trailing plus
-        val startX = width / 2f - contentW / 2f + gap / 2f
+        // Evenly spaced markers: [≡][page][page]...[+]. N pages give N+2
+        // elements; the whole row stays centred like the One UI rail.
+        val elements = pages + 2
+        val rowW = (elements - 1) * gap
+        val firstCx = width / 2f - rowW / 2f
         val hitH = (44f * dp).roundToInt()
         railRect.set(
-            (startX - gap).roundToInt(), centerY - hitH / 2,
-            (startX + contentW).roundToInt(), centerY + hitH / 2,
+            (firstCx - gap / 2f).roundToInt(), centerY - hitH / 2,
+            (firstCx + rowW + gap / 2f).roundToInt(), centerY + hitH / 2,
         )
         railHitRects.clear()
         railPageIndexes.clear()
 
-        // List button.
-        drawListButton(canvas, startX - gap / 2f, centerY.toFloat())
+        // List button (negative screen placeholder — the feature itself is
+        // deferred; the slot stays so it never collides with the home marker).
+        val listCx = firstCx
+        drawListButton(canvas, listCx, centerY.toFloat())
         railHitRects.add(Rect(
-            (startX - gap).roundToInt(), centerY - hitH / 2,
-            startX.roundToInt(), centerY + hitH / 2,
+            (listCx - gap / 2f).roundToInt(), centerY - hitH / 2,
+            (listCx + gap / 2f).roundToInt(), centerY + hitH / 2,
         ))
         railPageIndexes.add(-1) // list button: no page action yet
 
         for (i in 0 until pages) {
-            val cx = startX + i * gap
+            val cx = firstCx + (i + 1) * gap
             val hit = Rect(
                 (cx - gap / 2f).roundToInt(), centerY - hitH / 2,
                 (cx + gap / 2f).roundToInt(), centerY + hitH / 2,
@@ -269,7 +272,7 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
             railHitRects.add(hit)
             railPageIndexes.add(i)
             if (i == defaultPage) {
-                drawHouse(canvas, cx, centerY.toFloat(), 11.5f * dp, 11f * dp)
+                drawHouse(canvas, cx, centerY.toFloat(), 8.6f * dp, 8.4f * dp, fill = true)
             } else {
                 paint.style = Paint.Style.FILL
                 paint.alpha = if (i == activePage) 235 else 150
@@ -280,11 +283,11 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
         }
 
         // Plus.
-        val plusCx = startX + pages * gap - gap / 2f + 14f * dp
+        val plusCx = firstCx + (pages + 1) * gap
         drawPlus(canvas, plusCx, centerY.toFloat(), 6f * dp)
         railPlusRect.set(
-            (plusCx - 22f * dp).roundToInt(), centerY - hitH / 2,
-            (plusCx + 22f * dp).roundToInt(), centerY + hitH / 2,
+            (plusCx - gap / 2f).roundToInt(), centerY - hitH / 2,
+            (plusCx + gap / 2f).roundToInt(), centerY + hitH / 2,
         )
     }
 
@@ -374,12 +377,35 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
 
     // region Touch
 
+    /** True when the point belongs to one of the overlay's own controls. */
+    private fun hitSelf(x: Float, y: Float): Boolean {
+        val xi = x.roundToInt()
+        val yi = y.roundToInt()
+        if (homeRect.contains(xi, yi)) return true
+        if (!trashRect.isEmpty && trashRect.contains(xi, yi)) return true
+        if (!addCardRect.isEmpty && addCardRect.contains(xi, yi)) return true
+        if (railRect.contains(xi, yi)) return true
+        if (y > bottomRects[0]!!.top) return true
+        // Page cards count as the editor's tap targets (tap = open that page).
+        for (i in 0 until workspace.childCount) {
+            if (isAddCardPage(i)) continue
+            if (pageCard(tmpRect, i) && tmpRect.contains(xi, yi)) return true
+        }
+        return false
+    }
+
     override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
         if (visibility != VISIBLE) return false
         val x = event.x
         val y = event.y
         when (event.actionMasked) {
+            android.view.MotionEvent.ACTION_DOWN -> {
+                // Claim the stream only when the press lands on one of the
+                // editor's controls; otherwise the workspace keeps the gesture.
+                return hitSelf(x, y)
+            }
             android.view.MotionEvent.ACTION_UP -> {
+                if (!hitSelf(x, y)) return false
                 when {
                     homeRect.contains(x.roundToInt(), y.roundToInt()) -> {
                         workspace.setUserDefaultPage(currentPageIndex())

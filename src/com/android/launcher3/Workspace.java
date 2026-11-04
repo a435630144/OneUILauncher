@@ -1293,7 +1293,17 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         }
 
         if (pageShift >= 0) {
-            setCurrentPage(currentPage - pageShift);
+            // The current page may have been the one that was just removed
+            // (e.g. an empty drag-over page created at the edge and stripped
+            // right after the drop failed) — clamping keeps the workspace
+            // from getting stuck on an out-of-range page where scrolling no
+            // longer responds.
+            int newCurrent = Utilities.boundToRange(
+                    currentPage - pageShift, 0, Math.max(0, getChildCount() - 1));
+            setCurrentPage(newCurrent);
+            if (newCurrent != currentPage) {
+                snapToPage(newCurrent);
+            }
         }
     }
 
