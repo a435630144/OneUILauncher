@@ -21,21 +21,16 @@
     android:defaultFocusHighlightEnabled="false"
     android:orientation="vertical" >
 
-    <com.android.launcher3.folder.FolderPagedView
-        android:id="@+id/folder_content"
-        android:clipToPadding="false"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        launcher:pageIndicator="@+id/folder_page_indicator" />
-
+    <!-- One UI: the title row sits above the grid (ref09); the page dots
+         follow the title at the end of the same row. -->
     <LinearLayout
         android:id="@+id/folder_footer"
         android:layout_width="match_parent"
         android:layout_height="@dimen/folder_footer_height_default"
         android:clipChildren="false"
         android:orientation="horizontal"
-        android:paddingLeft="@dimen/folder_footer_horiz_padding"
-        android:paddingRight="@dimen/folder_footer_horiz_padding">
+        android:paddingStart="@dimen/oneui_folder_title_padding_start"
+        android:paddingEnd="@dimen/folder_footer_horiz_padding">
 
         <com.android.launcher3.folder.FolderNameEditText
             android:id="@+id/folder_name"
@@ -45,7 +40,7 @@
             style="@style/TextHeadline"
             android:layout_weight="1"
             android:background="@android:color/transparent"
-            android:gravity="center_horizontal"
+            android:gravity="start|center_vertical"
             android:hint="@string/folder_hint_text"
             android:imeOptions="flagNoExtractUi"
             android:importantForAutofill="no"
@@ -63,5 +58,12 @@
             />
 
     </LinearLayout>
+
+    <com.android.launcher3.folder.FolderPagedView
+        android:id="@+id/folder_content"
+        android:clipToPadding="false"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        launcher:pageIndicator="@+id/folder_page_indicator" />
 
 </com.android.launcher3.folder.Folder>

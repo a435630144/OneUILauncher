@@ -95,6 +95,12 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
     private Folder mFolder;
 
+    // One UI folder geometry (ref09): panel ≈ 76% of the screen width on a
+    // fixed 3-column grid, cell height ≈ 1.22× cell width for icon + label.
+    private static final float ONE_UI_PANEL_WIDTH_FRACTION = 0.76f;
+    private static final float ONE_UI_CELL_HEIGHT_ASPECT = 1.22f;
+    private static final int ONE_UI_FOLDER_COLUMNS = 3;
+
     private Path mClipPath;
 
     // If the views are attached to the folder or not. A folder should be bound when its
@@ -267,7 +273,12 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
     private CellLayout createAndAddNewPage() {
         DeviceProfile grid = mFolder.mActivityContext.getDeviceProfile();
         CellLayout page = mViewCache.getView(R.layout.folder_page, getContext(), this);
-        page.setCellDimensions(grid.folderCellWidthPx, grid.folderCellHeightPx);
+        // One UI: wide cells on the fixed 3-column grid — the panel ends up
+        // ~76% of the screen width (ref09) with generous icon spacing.
+        int cellWidth = (int) (grid.availableWidthPx * ONE_UI_PANEL_WIDTH_FRACTION)
+                / ONE_UI_FOLDER_COLUMNS;
+        int cellHeight = (int) (cellWidth * ONE_UI_CELL_HEIGHT_ASPECT);
+        page.setCellDimensions(cellWidth, cellHeight);
         page.getShortcutsAndWidgets().setMotionEventSplittingEnabled(false);
         page.setInvertIfRtl(true);
         page.setGridSize(mGridCountX, mGridCountY);

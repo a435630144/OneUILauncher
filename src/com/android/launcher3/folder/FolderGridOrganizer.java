@@ -57,7 +57,11 @@ public class FolderGridOrganizer {
      * Creates a FolderGridOrganizer for the given DeviceProfile
      */
     public static FolderGridOrganizer createFolderGridOrganizer(DeviceProfile profile) {
-        return new FolderGridOrganizer(profile.numFolderColumns, profile.numFolderRows);
+        // One UI: folders always use a fixed 3-column large-icon grid
+        // (ref09), regardless of the workspace grid width. All callers
+        // (paging, preview checks, database position updates) share this
+        // organizer so the on-screen grid and the stored ranks stay in sync.
+        return new FolderGridOrganizer(3, profile.numFolderRows);
     }
 
     /**

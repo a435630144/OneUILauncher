@@ -324,7 +324,10 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mFooter = findViewById(R.id.folder_footer);
         mFooterHeight = dp.folderFooterHeightPx;
         mFolderName = findViewById(R.id.folder_name);
-        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_PX, dp.folderLabelTextSizePx);
+        // One UI folder title: larger, semibold headline above the grid (ref09).
+        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f);
+        mFolderName.setTypeface(
+                android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
         mFolderName.setOnBackKeyListener(this);
         mFolderName.setOnEditorActionListener(this);
         mFolderName.setSelectAllOnFocus(true);
@@ -779,6 +782,8 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                         FOLDER_OPENED_MESSAGE);
 
                 mContent.setFocusOnFirstChild();
+                // One UI: the workspace behind the folder sheet is blurred.
+                applyWorkspaceBlur(1f);
             }
         });
 
@@ -862,6 +867,16 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     @Override
     protected boolean isOfType(int type) {
         return (type & TYPE_FOLDER) != 0;
+    }
+
+    /**
+     * One UI: blurs the workspace behind the open folder sheet. No-op when the
+     * host is not the main launcher or on software rendering.
+     */
+    private void applyWorkspaceBlur(float fraction) {
+        if (mActivityContext instanceof Launcher) {
+            app.lawnchair.oneui.OneUiAppBlur.apply((Launcher) mActivityContext, fraction);
+        }
     }
 
     @Override
@@ -960,6 +975,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         if (parent != null) {
             parent.removeView(this);
         }
+        applyWorkspaceBlur(0f);
         getDragController().removeDropTarget(this);
         clearFocus();
         if (mFolderIcon != null) {

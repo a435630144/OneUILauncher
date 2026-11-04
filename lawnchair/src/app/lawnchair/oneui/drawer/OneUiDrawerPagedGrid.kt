@@ -56,9 +56,15 @@ class OneUiDrawerPagedGrid(
     private val pageDotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     init {
-        // The grid paints the One UI page dots itself, below the icon area.
+        // The grid paints the One UI page dots itself, below the icon area,
+        // and keeps the same top breathing room as the scrolling list.
         setWillNotDraw(false)
-        setPadding(0, 0, 0, (24f * resources.displayMetrics.density).roundToInt())
+        setPadding(
+            0,
+            resources.getDimensionPixelSize(com.android.launcher3.R.dimen.oneui_allapps_top_spacing),
+            0,
+            (24f * resources.displayMetrics.density).roundToInt(),
+        )
     }
 
     /** Rebuilds the pages from [list] (display order of the drawer). */

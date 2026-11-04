@@ -1720,7 +1720,10 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                             + getResources().getDimensionPixelSize(
                                     R.dimen.oneui_search_bar_bottom_margin);
                 }
-                mRecyclerView.setPadding(mPadding.left, mPadding.top, mPadding.right,
+                mRecyclerView.setPadding(mPadding.left,
+                        mPadding.top + getResources().getDimensionPixelSize(
+                                R.dimen.oneui_allapps_top_spacing),
+                        mPadding.right,
                         mPadding.bottom + bottomOffset);
             }
         }

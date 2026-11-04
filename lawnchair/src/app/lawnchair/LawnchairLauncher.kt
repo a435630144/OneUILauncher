@@ -303,6 +303,7 @@ class LawnchairLauncher : QuickstepLauncher() {
         if (!inCustomAllApps) {
             oneUiDrawerPagedGrid.visibility = android.view.View.GONE
             appsView.appsRecyclerViewContainer.visibility = android.view.View.VISIBLE
+            appsView.findViewById<android.view.View>(com.android.launcher3.R.id.fast_scroller)?.visibility = android.view.View.VISIBLE
             return
         }
         val list = appsView.activeRecyclerView?.apps as? app.lawnchair.allapps.LawnchairAlphabeticalAppsList<*>
@@ -314,6 +315,8 @@ class LawnchairLauncher : QuickstepLauncher() {
             ?: emptyList()
         oneUiDrawerPagedGrid.setApps(items)
         appsView.appsRecyclerViewContainer.visibility = android.view.View.INVISIBLE
+        // The paged grid has no scrollbar; the rail belongs to the list mode only.
+        appsView.findViewById<android.view.View>(com.android.launcher3.R.id.fast_scroller)?.visibility = android.view.View.INVISIBLE
         oneUiDrawerPagedGrid.visibility = android.view.View.VISIBLE
     }
 
