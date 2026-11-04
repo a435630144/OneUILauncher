@@ -72,3 +72,15 @@ lawnchair/src/app/lawnchair/ui/preferences/destinations/GesturePreferences.kt
 
 // v0.26: 编辑态过渡动画（onDraw editProgress 插值 + startEditAnimation）与菜单弹出动画（showItemMenu content 属性动画）——均位于 OneUiDrawerDragOverlay.kt，无新增文件。
 lawnchair/src/app/lawnchair/oneui/drawer/OneUiDrawerPagedGrid.kt
+src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java
+lawnchair/res/values/config.xml
+
+// v0.29: 主屏 One UI 页点行（WorkspacePageIndicator 重写：当前页房子轮廓 + 其余页圆点，
+// hotseat 下方常驻；行尾 + 号 = Workspace.addUserPage 建页，空页经 mUserCreatedPages
+// 保护不被 stripEmptyScreens 清除）。config_default_enable_dot_pagination 默认 false，
+// 避免 Launcher.onCreateView 把页点替换为 AOSP PageIndicatorDots。
+// 主屏图标整体消失根因：updatePageAlphaValues 在首布局前被 onScrollChanged 触发，
+// getScrollProgress 除以 measuredWidth=0 产生 NaN → setAlpha(NaN) → 全部图标不渲染
+// 不可点；现以 measuredWidth 早退 + NaN/Inf 跳过 + alpha 钳制 [0.45,1] 防护。
+// 抽屉：OneUiDrawerPagedGrid 页点上移至顶层 onDraw（数量=页数、搜索栏上方）、
+// 24dp 底部 padding、bottomMargin=72+8dp 避开搜索胶囊、cell gravity 水平居中。

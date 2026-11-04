@@ -20,7 +20,12 @@
 时钟已有**四种样式**（默认 / 紧凑 / 仅时间 / 居中，设置 → 主屏幕可切换并即时刷新
 小组件）；拖拽编辑模式下长按即弹 **One UI 菜单**（添加至主屏幕 / 卸载 / 应用信息）；
 抽屉打开时主屏应用 **RenderEffect 背景模糊**（API 31+）。
-下一步是页面切换视差、时钟样式的覆盖层同步（回退态）、使用频率排序。
+**v0.29**：修复了**主屏图标整体消失**的根因（启动首布局前 scrollProgress 除零 →
+NaN alpha）；主屏新增 **One UI 页点行**（当前页房子轮廓 + 其余页圆点，hotseat 下方，
+行尾 + 号建页且空页受保护）；抽屉分页网格修正页点数量/位置、图标不压搜索栏、
+标签水平居中。
+下一步是页面总览编辑器（One UI 页面缩略视图，+ 号/≡ 的正式归属）、
+空页 DB 持久化、One UI 大文件夹全屏毛玻璃面板。
 
 当前 APK：
 
@@ -374,11 +379,12 @@ OneUiDrawerDragOverlay.kt`，由 `LawnchairLauncher.setupOneUiDrawerDragOverlay(
 | 首次绑定需系统确认 | 侧载应用受 `BIND_APPWIDGET` 限制，首次启动会弹「是否允许创建微件」 | 勾选「始终允许」即可；取消后覆盖层继续显示，不会自动重试 |
 | 抽屉三点菜单 | 已改为 One UI 底部菜单（排序 / 设置），排序支持字母 / 自定义两种模式 | 排序编辑器在设置页；抽屉内长按拖拽已实现（见 §3.10） |
 | 自定义排序覆盖范围 | 只对主用户的应用生效；工作资料 / 私密空间仍走 AOSP 顺序 | 多资料场景后续再扩展，当前不影响主用户 |
-| 使用频率排序 | 尚未实现，只有字母 / 自定义 | 需要接 `UsageStatsManager` 或 `PredictionProvider` 的排序信号 |
 | 抽屉分组与 One UI 不一致 | 行内字母标题默认开启，与 One UI 7 原版不同 | 设置 → 应用抽屉 → 网格里有「字母分组标题」开关，关掉即只剩右侧索引 |
 | 索引条触摸区域 | 视觉上是 3dp 细条，实际可拖区域仍是整条 `fastscroll_width`，与 One UI 手感接近 | 如需更宽/更窄改 `res/values/dimens.xml` 的 `fastscroll_width`，别改绘制宽度 |
 | 键盘弹出时列表底部被键盘遮住 | 搜索结果区域变小 | 后续在 IME 显示时减少列表底部 padding，或滚动到结果 |
 | 模拟器 3 按钮导航 | 视觉与手势导航不同 | 最终需在 gesture navigation 下再验一次 inset |
+| 页点行 + 号常驻 | 真机 One UI 的 + / ≡ 在「页面总览编辑器」内，普通主屏只有 🏠●●；本构建无总览入口，+ 常驻行尾 | 做页面总览编辑器后把 + 移进去并加 ≡ |
+| + 建的空页重启后消失 | 空页只在内存与（投放图标后的）DB 中存在；`commitExtraEmptyScreens` 只分配 id，不写 DB 行 | 后续在 `addUserPage` 里直接向 workspaceScreens 表写行，重启后保留空页 |
 | PowerShell 5.1 中文乱码 | 终端显示问题，不是文件问题 | 文件均为 UTF-8；用 `read` 工具或 VS Code 查看 |
 
 ---
@@ -555,6 +561,8 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 
 | 提交 | 内容 |
 | --- | --- |
+| `8eee87f` | 文档: v0.29 记录（主屏图标消失根因 + One UI 页点行 + 抽屉分页细节） |
+| `eeb4c18` | 修复: 主屏图标整体消失（NaN alpha）+ One UI 页点行 + 抽屉分页细节 |
 | `b8547d8` | 时钟：升级为 4×1 AppWidget |
 | `318cf35` | 动画：长按菜单改为 One UI 弹性展开 |
 | `9de5b20` | 文档：记录设置二级页整理 |

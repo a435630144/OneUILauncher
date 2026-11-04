@@ -511,6 +511,55 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.29 — 主屏 One UI 页点 + 图标消失根因修复 + 抽屉细节修正（2026-11-04）
+
+**修正：主屏图标全部消失（用户报告"重启/长按后桌面图标全没了"）**
+
+- **根因**：v0.26 视差提交引入的 `updatePageAlphaValues` 中
+  `alpha = 1 - |scrollProgress| * 0.55f` 无任何钳制；启动期间
+  `insertNewWorkspaceScreen` / 首次 `onScrollChanged` 在首布局前触发时
+  `getMeasuredWidth() == 0`，`getScrollProgress` 除以 0 产生 NaN/±Inf，
+  `setAlpha(NaN)` 令 `ShortcutAndWidgetContainer` 整体不渲染且不接收触摸
+  （视图树节点与绑定均正常，只有像素消失——与用户描述完全吻合）。
+- **修复**：`updatePageAlphaValues` / `updatePageScrollValues` 增加
+  `getMeasuredWidth() <= 0` 早退与 NaN/Inf 跳过，alpha 钳制到 [0.45, 1]；
+  顺带清理视差提交中重复的两段 `setTranslationX`。
+- 验证：重启后 7 图标 + 时钟覆盖层 + hotseat 全部正常渲染，点击可启动。
+
+**主屏：One UI 页点行（真机 ref03/ref04 复刻）**
+
+- 重写 `WorkspacePageIndicator`：当前页为**房子轮廓**（One UI home 标记）、
+  其余页为小圆点，行常驻不自动隐藏；绘制于 hotseat 下方、导航条上方
+  （`setInsets` 设 bottomMargin = 导航条 + 8dp）。
+- 行尾**加号按钮**：点击追加一页（`Workspace.addUserPage()`：addExtraEmptyScreens
+  → commitExtraEmptyScreens → 记录 user-created → 滑至新页）。真机上 + 位于
+  页面总览编辑器内；本构建尚无总览入口，故常驻行尾（已知差异）。
+- `Workspace.stripEmptyScreens` 跳过 user-created 页，空页在会话内保留；
+  放入第一个图标时经既有 drop→commit 路径持久化。空页跨重启不保留
+  （DB 空页持久化为后续任务）。
+- `config_default_enable_dot_pagination` 默认值 true→false：该开关会把
+  launcher.xml 的 `WorkspacePageIndicator` 运行时替换为 AOSP 风格
+  `PageIndicatorDots`（`Launcher.onCreateView`），导致 One UI 页点不生效。
+- 验证：`🏠 ● ● +` 页点行、双页互滑、页点随当前页切换、+ 建页后空页保留。
+
+**抽屉：自定义排序分页网格细节（用户真机截图反馈）**
+
+- 页点从 `Page.onDraw`（误用 cell 数、画在搜索栏底下）移到
+  `OneUiDrawerPagedGrid` 顶层 `onDraw`：数量=页数、高亮当前页、
+  位置在底部保留区中央（搜索胶囊正上方）。
+- `OneUiDrawerPagedGrid` 增加 24dp 底部 padding 作页点保留区；
+  `LawnchairLauncher.setupOneUiDrawerPagedGrid` 给 pagedGrid 设
+  bottomMargin = search_box_container_height + oneui_search_bar_bottom_margin，
+  图标网格不再与搜索栏重叠（与滚动列表同款保留量）。
+- 单元格 `gravity = CENTER_HORIZONTAL`：图标与文件名一并水平居中
+  （BubbleTextView 图标为顶部 compound drawable，gravity 同时控制两者）。
+- 搜索胶囊加 64dp 水平 padding（窄居中，One UI 8.5 样式）。
+- 验证：抽屉 2 页页点居中于搜索栏上方、首行不压状态栏、标签居中。
+
+**文档**
+
+- `docs/refactor/HANDOVER.md`、`tools/oneui-overlay.txt` 同步。
+
 ## v0.28 — 分页网格布局修复（2026-11-04）
 
 **修正**（v0.27 的分页网格显示空白 / 格子排成一行）
