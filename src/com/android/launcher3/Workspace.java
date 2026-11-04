@@ -1016,6 +1016,30 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     }
 
     /**
+     * Screen ids explicitly created by the user (One UI plus button on the page
+     * rail). These pages survive [stripEmptyScreens] even while empty, like One
+     * UI keeps an added blank page until the user removes content or the page.
+     * Note: they are still session-scoped; an empty page is not written to the
+     * database until an item is dropped onto it.
+     */
+    private final IntSet mUserCreatedPages = new IntSet();
+
+    /**
+     * One UI "add page": appends an empty page, commits it to a real screen id
+     * and slides to it, marking it as user-created so it is not stripped while
+     * empty.
+     */
+    public void addUserPage() {
+        if (mLauncher.isWorkspaceLoading()) {
+            return;
+        }
+        addExtraEmptyScreens();
+        IntSet committed = commitExtraEmptyScreens();
+        mUserCreatedPages.addAll(committed);
+        snapToPage(getChildCount() - 1);
+    }
+
+    /**
      * Commits the extra empty pages then returns the screen ids of those new
      * screens.
      * Usually there's only one extra empty screen, but when two panel home is
@@ -1161,7 +1185,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             int id = mWorkspaceScreens.keyAt(i);
             CellLayout cl = mWorkspaceScreens.valueAt(i);
             // FIRST_SCREEN_ID can never be removed.
+            // User-created pages (One UI plus button) survive while empty.
             if ((!FeatureFlags.topQsbOnFirstScreenEnabled(mLauncher) || id > FIRST_SCREEN_ID)
+                    && !mUserCreatedPages.contains(id)
                     && cl.getShortcutsAndWidgets().getChildCount() == 0) {
                 removeScreens.add(id);
             }
@@ -1616,13 +1642,25 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         // between
         // goToState(SPRING_LOADED) and onStartStateTransition.
         if (!workspaceInModalState() && !mIsSwitchingState && !mDragController.isDragging()) {
+            // Before the first layout getMeasuredWidth() is 0, which makes
+            // getScrollProgress return NaN / ±Inf. Setting a NaN alpha would
+            // make every icon unrendered and untouchable (regression: the
+            // whole home screen went blank after relaunch), so bail out and
+            // let the next scroll/layout pass apply real values.
+            if (getMeasuredWidth() <= 0) {
+                return;
+            }
             int screenCenter = getScrollX() + getMeasuredWidth() / 2;
             for (int i = 0; i < getChildCount(); i++) {
                 CellLayout child = (CellLayout) getChildAt(i);
                 if (child != null) {
                     float scrollProgress = getScrollProgress(screenCenter, child, i);
+                    if (Float.isNaN(scrollProgress) || Float.isInfinite(scrollProgress)) {
+                        continue;
+                    }
                     // One UI: adjacent pages fade lightly instead of fully disappearing.
-                    float alpha = 1 - Math.abs(scrollProgress) * 0.55f;
+                    float alpha = Utilities.boundToRange(
+                            1 - Math.abs(scrollProgress) * 0.55f, 0.45f, 1f);
                     child.getShortcutsAndWidgets().setAlpha(alpha);
                     child.getShortcutsAndWidgets().setImportantForAccessibility(
                             alpha > 0.1f ? IMPORTANT_FOR_ACCESSIBILITY_AUTO
@@ -1633,16 +1671,21 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     }
 
     private void updatePageScrollValues() {
+        // Same NaN guard as updatePageAlphaValues: without a first layout the
+        // scroll progress is meaningless (division by zero measured width).
+        if (getMeasuredWidth() <= 0) {
+            return;
+        }
         int screenCenter = getScrollX() + getMeasuredWidth() / 2;
         for (int i = 0; i < getChildCount(); i++) {
             CellLayout child = (CellLayout) getChildAt(i);
             if (child != null) {
                 float scrollProgress = getScrollProgress(screenCenter, child, i);
+                if (Float.isNaN(scrollProgress) || Float.isInfinite(scrollProgress)) {
+                    continue;
+                }
                 child.setScrollProgress(scrollProgress);
-                // One UI subtle parallax: content trails the page frame by up to 30px.
-                child.getShortcutsAndWidgets().setTranslationX(
-                        (mIsRtl ? -1 : 1) * scrollProgress * 30f);
-                // One UI subtle parallax: page content trails the page frame slightly,
+                // One UI subtle parallax: content trails the page frame slightly,
                 // so icons drift toward the center as the page slides in.
                 float parallax = scrollProgress * 30f;
                 child.getShortcutsAndWidgets().setTranslationX(

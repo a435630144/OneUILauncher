@@ -20,6 +20,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -52,11 +53,33 @@ class OneUiDrawerPagedGrid(
     private val launcher: Launcher = Launcher.getLauncher(context)
     private val prefs: PreferenceManager = PreferenceManager.getInstance(context)
     private var apps: List<AppInfo> = emptyList()
+    private val pageDotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    init {
+        // The grid paints the One UI page dots itself, below the icon area.
+        setWillNotDraw(false)
+        setPadding(0, 0, 0, (24f * resources.displayMetrics.density).roundToInt())
+    }
 
     /** Rebuilds the pages from [list] (display order of the drawer). */
     fun setApps(list: List<AppInfo>) {
         apps = list
         syncPages()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        // One UI page dots sit just above the docked search capsule, centered.
+        if (childCount == 0 || visibility != VISIBLE) return
+        val dot = 2.6f * resources.displayMetrics.density
+        val gap = 14f * resources.displayMetrics.density
+        val y = height - paddingBottom / 2f
+        val startX = width / 2f - (childCount - 1) * gap / 2f
+        for (i in 0 until childCount) {
+            pageDotPaint.color = Color.WHITE
+            pageDotPaint.alpha = if (i == mCurrentPage) 230 else 80
+            canvas.drawCircle(startX + i * gap, y, dot, pageDotPaint)
+        }
     }
 
     fun showPage(index: Int) {
@@ -95,6 +118,8 @@ class OneUiDrawerPagedGrid(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
+                // One UI centers the label horizontally under the icon.
+                gravity = Gravity.CENTER_HORIZONTAL
                 setOnClickListener(ItemClickHandler.INSTANCE)
                 setOnLongClickListener { v ->
                     startDrawerDrag(v as BubbleTextView)
@@ -127,20 +152,15 @@ class OneUiDrawerPagedGrid(
 
     /**
      * One drawer page: a fixed cols x rows grid whose cells host
-     * [BubbleTextView] icons, plus One UI page dots along the bottom edge.
+     * [BubbleTextView] icons. Page dots are drawn once by the parent
+     * [OneUiDrawerPagedGrid], so this class only implements the
+     * [PageIndicator] contract required by [PagedView].
      */
     class Page(
         context: Context,
         private val cols: Int,
         private val rows: Int,
     ) : FrameLayout(context), PageIndicator {
-
-        private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-        init {
-            // The page draws its own page dots over the (transparent) content.
-            setWillNotDraw(false)
-        }
 
         override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
             super.onLayout(changed, left, top, right, bottom)
@@ -157,22 +177,6 @@ class OneUiDrawerPagedGrid(
                 )
             }
         }
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            if (childCount == 0) return
-            dotPaint.color = Color.WHITE
-            val dot = 2.6f * resources.displayMetrics.density
-            val gap = 14f * resources.displayMetrics.density
-            val y = height - 14f * resources.displayMetrics.density
-            val startX = width / 2f - (childCount - 1) * gap / 2f
-            for (i in 0 until childCount) {
-                dotPaint.alpha = if (i == index) 220 else 80
-                canvas.drawCircle(startX + i * gap, y, dot, dotPaint)
-            }
-        }
-
-        var index: Int = 0
 
         override fun setScroll(currentScroll: Int, totalScroll: Int) = Unit
 

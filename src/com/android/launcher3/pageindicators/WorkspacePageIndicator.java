@@ -1,106 +1,67 @@
 package com.android.launcher3.pageindicators;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.ObjectAnimator;
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Rect;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.AttributeSet;
-import android.util.Property;
+import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewConfiguration;
 
 import com.android.launcher3.Insettable;
 import com.android.launcher3.Launcher;
+import com.android.launcher3.LauncherState;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.Workspace;
+import com.android.launcher3.statemanager.StateManager;
 import com.android.launcher3.util.Themes;
 
 /**
- * A PageIndicator that briefly shows a fraction of a line when moving between pages
+ * One UI style workspace page indicator.
  *
- * The fraction is 1 / number of pages and the position is based on the progress of the page scroll.
+ * Instead of the AOSP scroll progress line, this draws a row of markers below
+ * the hotseat: the current page is a house outline (the "home" marker, like
+ * One UI) and every other page is a small dot. The markers stay visible at all
+ * times. In edit mode (One UI "organize" / spring loaded) a plus button is
+ * shown after the markers which appends a new empty page, mirroring the plus
+ * at the end of the One UI page rail.
  */
 public class WorkspacePageIndicator extends View implements Insettable, PageIndicator {
 
-    private static final int LINE_ANIMATE_DURATION = ViewConfiguration.getScrollBarFadeDuration();
-    private static final int LINE_FADE_DELAY = ViewConfiguration.getScrollDefaultDelay();
-    public static final int WHITE_ALPHA = (int) (0.70f * 255);
-    public static final int BLACK_ALPHA = (int) (0.65f * 255);
+    private static final float DOT_RADIUS_DP = 1.8f;
+    private static final float MARKER_GAP_DP = 16f;
+    private static final float HOUSE_WIDTH_DP = 11.5f;
+    private static final float HOUSE_HEIGHT_DP = 11f;
+    private static final float HOUSE_STROKE_DP = 1.6f;
+    private static final float PLUS_HALF_DP = 6f;
+    private static final float PLUS_HIT_WIDTH_DP = 44f;
+    private static final float PLUS_LEAD_GAP_DP = 12f;
 
-    private static final int LINE_ALPHA_ANIMATOR_INDEX = 0;
-    private static final int NUM_PAGES_ANIMATOR_INDEX = 1;
-    private static final int TOTAL_SCROLL_ANIMATOR_INDEX = 2;
-    private static final int ANIMATOR_COUNT = 3;
-
-    private ValueAnimator[] mAnimators = new ValueAnimator[ANIMATOR_COUNT];
-
-    private final Handler mDelayedLineFadeHandler = new Handler(Looper.getMainLooper());
     private final Launcher mLauncher;
+    private final Paint mMarkerPaint;
+    private final Path mHousePath = new Path();
 
-    private boolean mShouldAutoHide = true;
+    private int mActivePage = 0;
+    private int mNumPages = 0;
+    private boolean mInEditMode = false;
 
-    // The alpha of the line when it is showing.
-    private int mActiveAlpha = 0;
-    // The alpha that the line is being animated to or already at (either 0 or mActiveAlpha).
-    private int mToAlpha;
-    // A float value representing the number of pages, to allow for an animation when it changes.
-    private float mNumPagesFloat;
-    private int mCurrentScroll;
-    private int mTotalScroll;
-    private Paint mLinePaint;
-    private final int mLineHeight;
+    // Geometry recomputed on draw; kept as fields so touch handling matches
+    // exactly what is painted.
+    private float mPlusHitLeft = Float.MAX_VALUE;
+    private float mPlusHitRight = Float.MAX_VALUE;
 
-    private static final Property<WorkspacePageIndicator, Integer> PAINT_ALPHA
-            = new Property<WorkspacePageIndicator, Integer>(Integer.class, "paint_alpha") {
-        @Override
-        public Integer get(WorkspacePageIndicator obj) {
-            return obj.mLinePaint.getAlpha();
-        }
-
-        @Override
-        public void set(WorkspacePageIndicator obj, Integer alpha) {
-            obj.mLinePaint.setAlpha(alpha);
-            obj.invalidate();
-        }
-    };
-
-    private static final Property<WorkspacePageIndicator, Float> NUM_PAGES
-            = new Property<WorkspacePageIndicator, Float>(Float.class, "num_pages") {
-        @Override
-        public Float get(WorkspacePageIndicator obj) {
-            return obj.mNumPagesFloat;
-        }
-
-        @Override
-        public void set(WorkspacePageIndicator obj, Float numPages) {
-            obj.mNumPagesFloat = numPages;
-            obj.invalidate();
-        }
-    };
-
-    private static final Property<WorkspacePageIndicator, Integer> TOTAL_SCROLL
-            = new Property<WorkspacePageIndicator, Integer>(Integer.class, "total_scroll") {
-        @Override
-        public Integer get(WorkspacePageIndicator obj) {
-            return obj.mTotalScroll;
-        }
-
-        @Override
-        public void set(WorkspacePageIndicator obj, Integer totalScroll) {
-            obj.mTotalScroll = totalScroll;
-            obj.invalidate();
-        }
-    };
-
-    private Runnable mHideLineRunnable = () -> animateLineToAlpha(0);
+    private final StateManager.StateListener<LauncherState> mStateListener =
+            new StateManager.StateListener<LauncherState>() {
+                @Override
+                public void onStateTransitionComplete(LauncherState finalState) {
+                    setEditMode(finalState == LauncherState.EDIT_MODE
+                            || finalState == LauncherState.SPRING_LOADED);
+                }
+            };
 
     public WorkspacePageIndicator(Context context) {
         this(context, null);
@@ -112,154 +73,175 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
 
     public WorkspacePageIndicator(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+        mLauncher = Launcher.getLauncher(context);
 
         Resources res = context.getResources();
-        mLinePaint = new Paint();
-        mLinePaint.setAlpha(0);
-
-        mLauncher = Launcher.getLauncher(context);
-        mLineHeight = res.getDimensionPixelSize(R.dimen.workspace_page_indicator_line_height);
+        float density = res.getDisplayMetrics().density;
+        mMarkerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mMarkerPaint.setStrokeWidth(HOUSE_STROKE_DP * density);
+        mMarkerPaint.setStyle(Paint.Style.STROKE);
+        mMarkerPaint.setStrokeJoin(Paint.Join.ROUND);
+        mMarkerPaint.setStrokeCap(Paint.Cap.ROUND);
 
         boolean darkText = Themes.getAttrBoolean(mLauncher, R.attr.isWorkspaceDarkText);
-        mActiveAlpha = darkText ? BLACK_ALPHA : WHITE_ALPHA;
-        mLinePaint.setColor(darkText ? Color.BLACK : Color.WHITE);
+        mMarkerPaint.setColor(darkText ? Color.BLACK : Color.WHITE);
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        mLauncher.getStateManager().addStateListener(mStateListener);
+        setEditMode(mLauncher.getStateManager().getState() == LauncherState.EDIT_MODE
+                || mLauncher.getStateManager().getState() == LauncherState.SPRING_LOADED);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        mLauncher.getStateManager().removeStateListener(mStateListener);
+        super.onDetachedFromWindow();
+    }
+
+    private void setEditMode(boolean editMode) {
+        if (mInEditMode != editMode) {
+            mInEditMode = editMode;
+            invalidate();
+        }
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (mTotalScroll == 0 || mNumPagesFloat == 0) {
+        if (mNumPages <= 0) {
             return;
         }
+        float density = getResources().getDisplayMetrics().density;
+        float gap = MARKER_GAP_DP * density;
+        float dotR = DOT_RADIUS_DP * density;
 
-        // Compute and draw line rect.
-        float progress = Utilities.boundToRange(((float) mCurrentScroll) / mTotalScroll, 0f, 1f);
-        int availableWidth = getWidth();
-        int lineWidth = (int) (availableWidth / mNumPagesFloat);
-        int lineLeft = (int) (progress * (availableWidth - lineWidth));
-        int lineRight = lineLeft + lineWidth;
+        float centerY = getHeight() / 2f;
+        float startX = getWidth() / 2f - (mNumPages - 1) * gap / 2f;
 
-        canvas.drawRoundRect(lineLeft, getHeight() / 2 - mLineHeight / 2, lineRight,
-                getHeight() / 2 + mLineHeight / 2, mLineHeight, mLineHeight, mLinePaint);
+        for (int i = 0; i < mNumPages; i++) {
+            float cx = startX + i * gap;
+            if (i == mActivePage) {
+                drawHouse(canvas, cx, centerY,
+                        HOUSE_WIDTH_DP * density, HOUSE_HEIGHT_DP * density);
+            } else {
+                mMarkerPaint.setStyle(Paint.Style.FILL);
+                mMarkerPaint.setAlpha(150);
+                canvas.drawCircle(cx, centerY, dotR, mMarkerPaint);
+                mMarkerPaint.setStyle(Paint.Style.STROKE);
+                mMarkerPaint.setAlpha(255);
+            }
+        }
+
+        // The plus button stays visible at the end of the rail: on One UI it
+        // lives in the page-overview editor, but this build has no overview
+        // entry point yet, so the plus is exposed directly (ref04).
+        float plusCx = startX + (mNumPages - 1) * gap + PLUS_LEAD_GAP_DP * density
+                + PLUS_HALF_DP * density;
+        mPlusHitLeft = plusCx - PLUS_HIT_WIDTH_DP * density / 2f;
+        mPlusHitRight = plusCx + PLUS_HIT_WIDTH_DP * density / 2f;
+        drawPlus(canvas, plusCx, centerY, PLUS_HALF_DP * density);
+    }
+
+    /** One UI home marker: a simple outlined house with a peaked roof. */
+    private void drawHouse(Canvas canvas, float cx, float cy, float w, float h) {
+        float halfW = w / 2f;
+        float halfH = h / 2f;
+        // The roof spans the full width and rises above the body.
+        float eaveY = cy - halfH + h * 0.32f;
+        mHousePath.reset();
+        mHousePath.moveTo(cx - halfW, cy + halfH);
+        mHousePath.lineTo(cx - halfW, eaveY);
+        mHousePath.lineTo(cx, cy - halfH);
+        mHousePath.lineTo(cx + halfW, eaveY);
+        mHousePath.lineTo(cx + halfW, cy + halfH);
+        mHousePath.close();
+        mMarkerPaint.setStyle(Paint.Style.STROKE);
+        mMarkerPaint.setAlpha(255);
+        canvas.drawPath(mHousePath, mMarkerPaint);
+    }
+
+    private void drawPlus(Canvas canvas, float cx, float cy, float half) {
+        mMarkerPaint.setStyle(Paint.Style.STROKE);
+        mMarkerPaint.setAlpha(220);
+        canvas.drawLine(cx - half, cy, cx + half, cy, mMarkerPaint);
+        canvas.drawLine(cx, cy - half, cx, cy + half, mMarkerPaint);
+        mMarkerPaint.setAlpha(255);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        float x = event.getX();
+        boolean inPlusZone = x >= mPlusHitLeft && x <= mPlusHitRight;
+        if (!inPlusZone) {
+            return false;
+        }
+        if (event.getAction() == MotionEvent.ACTION_UP) {
+            addNewPage();
+        }
+        return true;
+    }
+
+    /**
+     * Appends an empty page at the end of the workspace and slides to it, like
+     * the plus button on the One UI page rail. The page is marked user-created
+     * so it survives [Workspace#stripEmptyScreens] while it is still empty.
+     */
+    private void addNewPage() {
+        Workspace workspace = mLauncher.getWorkspace();
+        if (workspace == null || workspace.getChildCount() == 0) {
+            return;
+        }
+        workspace.addUserPage();
     }
 
     @Override
     public void setScroll(int currentScroll, int totalScroll) {
-        if (getAlpha() == 0) {
-            return;
-        }
-        animateLineToAlpha(mActiveAlpha);
-
-        mCurrentScroll = currentScroll;
-        if (mTotalScroll == 0) {
-            mTotalScroll = totalScroll;
-        } else if (mTotalScroll != totalScroll) {
-            animateToTotalScroll(totalScroll);
-        } else {
-            invalidate();
-        }
-
-        if (mShouldAutoHide) {
-            hideAfterDelay();
-        }
-    }
-
-    private void hideAfterDelay() {
-        mDelayedLineFadeHandler.removeCallbacksAndMessages(null);
-        mDelayedLineFadeHandler.postDelayed(mHideLineRunnable, LINE_FADE_DELAY);
+        // The One UI rail is position-based (house + dots); scroll progress is
+        // not drawn, but the workspace drives visibility through this call.
     }
 
     @Override
-    public void setActiveMarker(int activePage) { }
+    public void setActiveMarker(int activePage) {
+        if (activePage != mActivePage) {
+            mActivePage = activePage;
+            invalidate();
+        }
+    }
 
     @Override
     public void setMarkersCount(int numMarkers) {
-        if (Float.compare(numMarkers, mNumPagesFloat) != 0) {
-            setupAndRunAnimation(ObjectAnimator.ofFloat(this, NUM_PAGES, numMarkers),
-                    NUM_PAGES_ANIMATOR_INDEX);
-        } else {
-            if (mAnimators[NUM_PAGES_ANIMATOR_INDEX] != null) {
-                mAnimators[NUM_PAGES_ANIMATOR_INDEX].cancel();
-                mAnimators[NUM_PAGES_ANIMATOR_INDEX] = null;
-            }
+        if (numMarkers != mNumPages) {
+            mNumPages = numMarkers;
+            invalidate();
         }
     }
 
     @Override
     public void setShouldAutoHide(boolean shouldAutoHide) {
-        mShouldAutoHide = shouldAutoHide;
-        if (shouldAutoHide && mLinePaint.getAlpha() > 0) {
-            hideAfterDelay();
-        } else if (!shouldAutoHide) {
-            mDelayedLineFadeHandler.removeCallbacksAndMessages(null);
-        }
+        // One UI markers are always visible.
     }
 
-    private void animateLineToAlpha(int alpha) {
-        if (alpha == mToAlpha) {
-            // Ignore the new animation if it is going to the same alpha as the current animation.
-            return;
-        }
-        mToAlpha = alpha;
-        setupAndRunAnimation(ObjectAnimator.ofInt(this, PAINT_ALPHA, alpha),
-                LINE_ALPHA_ANIMATOR_INDEX);
-    }
-
-    private void animateToTotalScroll(int totalScroll) {
-        setupAndRunAnimation(ObjectAnimator.ofInt(this, TOTAL_SCROLL, totalScroll),
-                TOTAL_SCROLL_ANIMATOR_INDEX);
-    }
-
-    /**
-     * Starts the given animator and stores it in the provided index in {@link #mAnimators} until
-     * the animation ends.
-     *
-     * If an animator is already at the index (i.e. it is already playing), it is canceled and
-     * replaced with the new animator.
-     */
-    private void setupAndRunAnimation(ValueAnimator animator, final int animatorIndex) {
-        if (mAnimators[animatorIndex] != null) {
-            mAnimators[animatorIndex].cancel();
-        }
-        mAnimators[animatorIndex] = animator;
-        mAnimators[animatorIndex].addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                mAnimators[animatorIndex] = null;
-            }
-        });
-        mAnimators[animatorIndex].setDuration(LINE_ANIMATE_DURATION);
-        mAnimators[animatorIndex].start();
-    }
-
-    /**
-     * Pauses all currently running animations.
-     */
     @Override
-    public void pauseAnimations() {
-        for (int i = 0; i < ANIMATOR_COUNT; i++) {
-            if (mAnimators[i] != null) {
-                mAnimators[i].pause();
-            }
-        }
-    }
+    public void pauseAnimations() { }
 
-    /**
-     * Force-ends all currently running or paused animations.
-     */
     @Override
-    public void skipAnimationsToEnd() {
-        for (int i = 0; i < ANIMATOR_COUNT; i++) {
-            if (mAnimators[i] != null) {
-                mAnimators[i].end();
-            }
-        }
-    }
+    public void skipAnimationsToEnd() { }
 
     /**
-     * We need to override setInsets to prevent InsettableFrameLayout from applying different
-     * margins on the page indicator.
+     * Sits just above the navigation bar, inside the hotseat's bottom padding
+     * area (like the One UI page rail below the hotseat icons).
      */
     @Override
     public void setInsets(Rect insets) {
+        android.widget.FrameLayout.LayoutParams lp =
+                (android.widget.FrameLayout.LayoutParams) getLayoutParams();
+        int margin = insets.bottom
+                + (int) (8f * getResources().getDisplayMetrics().density);
+        if (lp.bottomMargin != margin) {
+            lp.bottomMargin = margin;
+            setLayoutParams(lp);
+        }
     }
 }

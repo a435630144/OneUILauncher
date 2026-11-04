@@ -150,7 +150,9 @@
     <bool name="config_default_perform_wide_search">true</bool>
     <bool name="config_default_live_information_enabled">true</bool>
     <bool name="config_default_live_information_show_announcements">true</bool>
-    <bool name="config_default_enable_dot_pagination">true</bool>
+    <!-- One UI uses its own house + dots page rail (WorkspacePageIndicator);
+         the AOSP-style dot pagination swap must stay off. -->
+    <bool name="config_default_enable_dot_pagination">false</bool>
     <bool name="config_default_enable_material_u_popup">true</bool>
     <bool name="config_default_enable_two_line_allapps">false</bool>
 

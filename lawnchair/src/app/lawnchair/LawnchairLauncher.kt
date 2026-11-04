@@ -283,11 +283,15 @@ class LawnchairLauncher : QuickstepLauncher() {
      */
     private fun setupOneUiDrawerPagedGrid() {
         oneUiDrawerPagedGrid.visibility = android.view.View.GONE
-        appsView.addView(
-            oneUiDrawerPagedGrid,
+        // Keep the grid clear of the bottom-docked One UI search capsule,
+        // reserving the same space the scrolling list uses for it.
+        val lp = android.widget.RelativeLayout.LayoutParams(
             android.view.ViewGroup.LayoutParams.MATCH_PARENT,
             android.view.ViewGroup.LayoutParams.MATCH_PARENT,
         )
+        lp.bottomMargin = resources.getDimensionPixelSize(com.android.launcher3.R.dimen.search_box_container_height) +
+            resources.getDimensionPixelSize(com.android.launcher3.R.dimen.oneui_search_bar_bottom_margin)
+        appsView.addView(oneUiDrawerPagedGrid, lp)
         stateManager.addStateListener(pagedGridStateListener)
     }
 
