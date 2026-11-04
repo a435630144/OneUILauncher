@@ -1,10 +1,16 @@
 package app.lawnchair.views
 
 import android.content.Context
+import android.graphics.Typeface
 import android.util.AttributeSet
+import android.view.Gravity
 import android.view.View
 import android.view.ViewTreeObserver
 import android.widget.LinearLayout
+import android.widget.TextClock
+import kotlin.math.roundToInt
+import app.lawnchair.preferences.PreferenceChangeListener
+import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.oneui.OneUiClockWidgetController
 import com.android.launcher3.R
 
@@ -35,9 +41,63 @@ class OneUiClockView @JvmOverloads constructor(
     private var preDrawObserver: ViewTreeObserver? = null
 
     private val widgetStateListener: () -> Unit = { syncWidgetVisibility() }
+    private val clockStyleListener = app.lawnchair.preferences.PreferenceChangeListener { applyClockStyle() }
+
+    private val timeClock: TextClock
+        get() = requireNotNull(findViewById<TextClock>(R.id.oneui_clock_time))
+    private val dateClock: TextClock
+        get() = requireNotNull(findViewById<TextClock>(R.id.oneui_clock_date))
+
+    private fun dp(v: Float): Int = (v * resources.displayMetrics.density).roundToInt()
+
+    /**
+     * Applies the four One UI clock styles to the fallback overlay, mirroring the
+     * RemoteViews layouts used by the app widget (see OneUiClockWidgetProvider).
+     */
+    private fun applyClockStyle() {
+        val style = app.lawnchair.preferences.PreferenceManager
+            .getInstance(context).clockStyle.get()
+        when (style) {
+            0 -> { // default: large time + date
+                orientation = VERTICAL
+                timeClock.textSize = 44f
+                timeClock.typeface = android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+                dateClock.visibility = VISIBLE
+                dateClock.textSize = 14f
+                (timeClock.layoutParams as? LinearLayout.LayoutParams)?.topMargin = 0
+                gravity = Gravity.START
+            }
+            1 -> { // compact: time + date on one line
+                orientation = HORIZONTAL
+                timeClock.textSize = 30f
+                dateClock.visibility = VISIBLE
+                dateClock.textSize = 13f
+                (dateClock.layoutParams as? LinearLayout.LayoutParams)?.marginStart = dp(10f)
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            2 -> { // time only
+                orientation = VERTICAL
+                timeClock.textSize = 64f
+                timeClock.typeface = android.graphics.Typeface.create("sans-serif-thin", android.graphics.Typeface.NORMAL)
+                dateClock.visibility = GONE
+                gravity = Gravity.START
+            }
+            else -> { // centered: date above, time below
+                orientation = VERTICAL
+                timeClock.textSize = 38f
+                dateClock.visibility = VISIBLE
+                dateClock.textSize = 13f
+                gravity = Gravity.CENTER_HORIZONTAL
+            }
+        }
+        invalidate()
+    }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        app.lawnchair.preferences.PreferenceManager.getInstance(context)
+            .clockStyle.addListener(clockStyleListener)
+        applyClockStyle()
         OneUiClockWidgetController.addWidgetStateListener(widgetStateListener)
         syncWidgetVisibility()
 
@@ -56,6 +116,8 @@ class OneUiClockView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        app.lawnchair.preferences.PreferenceManager.getInstance(context)
+            .clockStyle.removeListener(clockStyleListener)
         OneUiClockWidgetController.removeWidgetStateListener(widgetStateListener)
         preDrawListener?.let { preDrawObserver?.removeOnPreDrawListener(it) }
         preDrawListener = null
