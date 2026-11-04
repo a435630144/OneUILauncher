@@ -124,8 +124,11 @@ class OneUiDrawerPagedGrid(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
-                // One UI centers the label horizontally under the icon.
+                // One UI centers the label horizontally under the icon and
+                // keeps it to a single ellipsized line.
                 gravity = Gravity.CENTER_HORIZONTAL
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
                 setOnClickListener(ItemClickHandler.INSTANCE)
                 setOnLongClickListener { v ->
                     startDrawerDrag(v as BubbleTextView)
