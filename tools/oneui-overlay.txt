@@ -94,3 +94,11 @@ src/com/android/launcher3/folder/FolderGridOrganizer.java
 src/com/android/launcher3/folder/FolderPagedView.java
 res/layout/user_folder_icon_normalized.xml
 res/drawable/round_rect_folder.xml
+
+// v0.31: One UI 页面总览编辑器——OneUiPageEditOverlay.kt（🏠默认主页/🗑删页/≡🏠●+页点行/
+// +建页卡片/底部四按钮/点击页面退出）；EditModeState 缩放 0.78+300ms、hotseat 移出；
+// Workspace.removePageAt（图标/文件夹/小组件三类删除）+ getUserDefaultPage/setUserDefaultPage
+// （oneUiDefaultPage 偏好）；LawnchairLauncher.showDefaultOptions → EDIT_MODE；
+// 抽屉修复：pagedGrid bottomMargin 动态含 dragLayer insets（真机手势导航）、
+// all_apps_rv_layout clipToPadding=true（动画期间图标超界）；拖拽让位预览
+// OneUiDrawerPagedGrid.previewShift + OneUiDrawerDragOverlay 悬停挂接。

@@ -511,6 +511,43 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.31 — One UI 页面总览编辑器 + 抽屉真机修复（2026-11-05）
+
+**页面总览编辑器（真机截图复刻）**
+
+- **进入/退出**：长按主屏空白直接进入 EDIT_MODE（原弹窗菜单移入编辑器底部）；
+  back、点击页面卡片（进入该页）退出；`EditModeState` 缩放 0.78 / 300ms，
+  两侧露出相邻页卡片边缘，hotseat 移出屏幕。
+- **OneUiPageEditOverlay**（dragLayer 覆盖层，自绘）：
+  - 顶部中央 **🏠**：把当前页设为 home 键默认页（`Workspace.setUserDefaultPage`
+    + `oneUiDefaultPage` 偏好；`moveToDefaultScreen` 改用用户页）。
+  - 当前页卡片顶部 **🗑**：删除该页（`Workspace.removePageAt`：图标/文件夹
+    及内容/小组件逐类入库删除）；空白页直接删，有内容弹确认框。
+  - 编辑态页点行 **≡ 🏠 ● ● +**：overlay 自绘（独立指示器在编辑态隐藏），
+    🏠 = 默认主页标记（非当前页），当前页圆点放大高亮，页点点击跳页、
+    + 追加页（`addUserPage`）。
+  - **+ 建页卡片**：进入编辑态自动在末尾挂 EXTRA_EMPTY 页（中央大 +），
+    点击建真页；退出编辑态自动移除未使用的空页。
+  - 底部四按钮：壁纸和风格 / 主题（系统显示设置）/ 小组件 / 设置。
+- 拖拽让位预览：`OneUiDrawerPagedGrid.previewShift` —— 抽屉编辑态悬停时
+  被挤开的图标实时 150ms 平移让位（One UI 手感），松手瞬间复位重建，
+  不再是松手才瞬移。
+
+**抽屉真机修复（用户截图反馈）**
+
+- **页点落在搜索栏内 / 末行图标与标签被搜索栏遮挡**：真机手势导航的
+  insets.bottom 远大于模拟器，`pagedGrid` 的 bottomMargin 此前只含 72+8dp；
+  现在 `updatePagedGridBottomMargin` 每次同步时加上 `dragLayer.getInsets().bottom`。
+- **上滑过程中图标画出边界**：`all_apps_rv_layout` 的 RecyclerView
+  `clipToPadding=false` 让内容画进底部保留区；改回默认裁剪，图标滚到搜索栏
+  边缘即被裁（One UI 观感）。
+
+**已知待办**
+
+- 抽屉内拖拽到另一图标上合并文件夹（需自定义顺序结构支持 FolderInfo）。
+- 编辑态页点行的 ≡ 页面列表动作。
+- 编辑器四按钮的图标为简化自绘，后续可换 SESL 素材风格。
+
 ## v0.30 — One UI 大文件夹 + 抽屉留白（2026-11-05）
 
 **应用文件夹（真机 ref09 复刻）**
