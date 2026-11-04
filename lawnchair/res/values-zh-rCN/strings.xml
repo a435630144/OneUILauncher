@@ -85,6 +85,9 @@
     <string name="oneui_edit_theme">主题</string>
     <string name="oneui_edit_widgets">小组件</string>
     <string name="oneui_edit_settings">设置</string>
+    <string name="oneui_drawer_folder_name">文件夹</string>
+    <string name="oneui_drawer_folder_merged">已合并为文件夹</string>
+    <string name="oneui_drawer_folder_added">已加入文件夹</string>
     <string name="oneui_page_delete_title">删除此页面？</string>
     <string name="oneui_page_delete_message">此页面有 %1$d 个项目，删除页面将一并移除它们。</string>
     <string name="oneui_drawer_drag_alphabetical">已切换为自定义排序</string>

@@ -324,7 +324,7 @@ class LawnchairLauncher : QuickstepLauncher() {
         }
     }
 
-    private fun syncOneUiDrawerPagedGrid() {
+    internal fun syncOneUiDrawerPagedGrid() {
         updatePagedGridBottomMargin()
         val inCustomAllApps = stateManager.state == com.android.launcher3.LauncherState.ALL_APPS &&
             !appsView.isSearching &&
@@ -336,18 +336,60 @@ class LawnchairLauncher : QuickstepLauncher() {
             appsView.findViewById<android.view.View>(com.android.launcher3.R.id.fast_scroller)?.visibility = android.view.View.VISIBLE
             return
         }
-        val list = appsView.activeRecyclerView?.apps as? app.lawnchair.allapps.LawnchairAlphabeticalAppsList<*>
-        val items = list?.adapterItems
+        val appsList = appsView.activeRecyclerView?.apps
+            as? app.lawnchair.allapps.LawnchairAlphabeticalAppsList<*>
+        val appsByKey = appsList?.adapterItems
             ?.asSequence()
             ?.filter { it.viewType == com.android.launcher3.allapps.BaseAllAppsAdapter.VIEW_TYPE_ICON }
             ?.mapNotNull { it.itemInfo as? com.android.launcher3.model.data.AppInfo }
-            ?.toList()
-            ?: emptyList()
-        oneUiDrawerPagedGrid.setApps(items)
+            ?.associateBy { it.toComponentKey().toString() }
+            ?: emptyMap()
+        val entries = buildDrawerEntries(appsByKey)
+        oneUiDrawerPagedGrid.setEntries(entries, appsByKey)
         appsView.appsRecyclerViewContainer.visibility = android.view.View.INVISIBLE
         // The paged grid has no scrollbar; the rail belongs to the list mode only.
         appsView.findViewById<android.view.View>(com.android.launcher3.R.id.fast_scroller)?.visibility = android.view.View.INVISIBLE
         oneUiDrawerPagedGrid.visibility = android.view.View.VISIBLE
+    }
+
+    /**
+     * Single source of the custom-order display sequence: app tokens, folder
+     * tokens (rendered via their first member) and new installs at the end,
+     * alphabetically — matching [app.lawnchair.allapps.LawnchairAlphabeticalAppsList].
+     */
+    internal fun buildDrawerEntries(appsByKey: Map<String, com.android.launcher3.model.data.AppInfo>): List<Any> {
+        val prefs = app.lawnchair.preferences.PreferenceManager.getInstance(this)
+        val folders = app.lawnchair.oneui.drawer.DrawerFolderStore.loadFolders(prefs)
+        val raw = prefs.drawerCustomOrder.get()
+        val entries = ArrayList<Any>()
+        val used = HashSet<String>()
+        if (raw.isNotBlank()) {
+            for ((type, value) in app.lawnchair.oneui.drawer.DrawerFolderStore.parseOrder(raw)) {
+                when (type) {
+                    "F" -> {
+                        val folder = folders[value]
+                        if (folder != null && folder.keys.isNotEmpty()) {
+                            folder.refreshPlaceholder()
+                            val placeholder = folder.placeholderKey?.let { appsByKey[it] }
+                            if (placeholder != null) {
+                                folder.keys.forEach { used.add(it) }
+                                entries.add(folder)
+                            }
+                        }
+                    }
+                    else -> {
+                        if (used.add(value)) {
+                            appsByKey[value]?.let { entries.add(it) }
+                        }
+                    }
+                }
+            }
+        }
+        appsByKey.values
+            .filter { used.add(it.toComponentKey().toString()) }
+            .sortedBy { it.title.toString().lowercase() }
+            .forEach { entries.add(it) }
+        return entries
     }
 
     private val pagedGridStateListener = object : com.android.launcher3.statemanager.StateManager.StateListener<com.android.launcher3.LauncherState> {

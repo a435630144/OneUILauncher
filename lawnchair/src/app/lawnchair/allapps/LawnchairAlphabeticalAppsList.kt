@@ -144,15 +144,22 @@ class LawnchairAlphabeticalAppsList<T>(
 
     /**
      * Applies the user's custom order, keeping apps that are not in the saved
-     * list (new installs) at the end in alphabetical order.
+     * list (new installs) at the end in alphabetical order. Drawer folder
+     * tokens (`F:<id>`) carry no single app position here; their members stay
+     * alphabetical in the plain list mode.
      */
     private fun applyCustomOrder(appList: List<AppInfo>): List<AppInfo> {
         val order = prefs.drawerCustomOrder.get()
         if (order.isBlank()) return appList
 
         val index = HashMap<String, Int>()
-        order.lineSequence().forEachIndexed { i, key ->
-            if (key.isNotBlank()) index.putIfAbsent(key, i)
+        order.lineSequence().forEachIndexed { i, raw ->
+            val key = when {
+                raw.startsWith("K:") -> raw.substring(2)
+                raw.startsWith("F:") -> null
+                else -> raw
+            }
+            if (!key.isNullOrBlank()) index.putIfAbsent(key, i)
         }
         if (index.isEmpty()) return appList
 

@@ -141,6 +141,9 @@ class PreferenceManager private constructor(private val context: Context) :
     /** Newline separated ComponentKey strings, only used in custom sort mode. */
     val drawerCustomOrder = StringPref("pref_drawerCustomOrder", "", refreshAllApps)
 
+    /** JSON map of drawer folder id -> {title, keys} (see DrawerFolderStore). */
+    val drawerFolders = StringPref("pref_drawerFolders", "{}", refreshAllApps)
+
     /** JSON object of ComponentKey -> launch count, backing the most-used drawer sort. */
     val appLaunchCounts = StringPref("pref_appLaunchCounts", "{}", refreshAllApps)
 

@@ -112,6 +112,9 @@ class OneUiDrawerDragOverlay(
 
     private var active = false
     private var ordered: MutableList<AppInfo>? = null
+
+    /** Placeholder app -> drawer folder id, for folder tokens in the order. */
+    private val folderIdByPlaceholder = HashMap<AppInfo, String>()
     private var dragged: AppInfo? = null
     private var page = 0
     private var pageOffset = 0f
@@ -180,18 +183,34 @@ class OneUiDrawerDragOverlay(
     /**
      * Snapshot of the drawer in display order. The preview keeps the current order; the custom
      * sort is only persisted when the user actually drops the icon on a new cell.
+     * Drawer folders participate through their first member (see [folderIdByPlaceholder]).
      */
     private fun initOrdered(): MutableList<AppInfo> {
         val list = ordered
         if (list != null) return list
         val recyclerView = appsView.activeRecyclerView
-        val keys = (recyclerView?.apps as? LawnchairAlphabeticalAppsList<*>)
+        val byKey = (recyclerView?.apps as? LawnchairAlphabeticalAppsList<*>)
             ?.adapterItems
             ?.asSequence()
             ?.filter { it.viewType == BaseAllAppsAdapter.VIEW_TYPE_ICON }
             ?.mapNotNull { it.itemInfo as? AppInfo }
-            ?.toMutableList()
-            ?: mutableListOf()
+            ?.associateBy { it.toComponentKey().toString() }
+            ?: emptyMap()
+        folderIdByPlaceholder.clear()
+        val keys = mutableListOf<AppInfo>()
+        for (entry in (launcher as? LawnchairLauncher)?.buildDrawerEntries(byKey).orEmpty()) {
+            val folder = entry as? DrawerFolderStore.Folder
+            if (folder != null) {
+                folder.refreshPlaceholder()
+                val placeholder = folder.placeholderKey?.let { byKey[it] }
+                if (placeholder != null) {
+                    folderIdByPlaceholder[placeholder] = folder.id
+                    keys.add(placeholder)
+                }
+            } else {
+                keys.add(entry as AppInfo)
+            }
+        }
         ordered = keys
         return keys
     }
@@ -200,7 +219,13 @@ class OneUiDrawerDragOverlay(
 
     private fun commitOrder() {
         val list = ordered ?: return
-        prefs.drawerCustomOrder.set(list.joinToString("\n") { it.toComponentKey().toString() })
+        prefs.drawerCustomOrder.set(
+            DrawerFolderStore.writeOrder(
+                list,
+                folderIdOf = { folderIdByPlaceholder[it] },
+                keyOf = { (it as AppInfo).toComponentKey().toString() },
+            ),
+        )
         prefs.drawerSortMode.set(LawnchairAlphabeticalAppsList.SORT_CUSTOM)
     }
 
@@ -212,12 +237,17 @@ class OneUiDrawerDragOverlay(
         if (!options.isDrawerDrag) return
         val app = dragObject.dragInfo as? AppInfo
         val list = initOrdered()
-        if (app == null || list.indexOf(app) < 0) {
+        // The drag info may be a folder's temp clone (same component key as
+        // the placeholder), so match by component key rather than reference.
+        val found = app?.let { candidate ->
+            list.firstOrNull { it.toComponentKey() == candidate.toComponentKey() }
+        }
+        if (app == null || found == null) {
             // Dragged item is not a drawer app (e.g. search result); nothing to take over.
             return
         }
         active = true
-        dragged = app
+        dragged = found
         draggingView = dragObject.dragView
         iconCache.clear()
         page = pageOf(list.indexOf(app)).coerceAtLeast(0)
@@ -256,6 +286,7 @@ class OneUiDrawerDragOverlay(
         dragged = null
         draggingView = null
         ordered = null
+        folderIdByPlaceholder.clear()
         iconCache.clear()
         targetIndex = -1
         targetRect.setEmpty()
@@ -335,38 +366,86 @@ class OneUiDrawerDragOverlay(
         }
         when {
             addToHomeEdge != 0 -> {
-                val added = launcher.workspace.addAppFromDrawer(app) != null
-                val text = if (added) R.string.oneui_drawer_drag_added else R.string.oneui_drawer_drag_no_space
-                Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
-                // The app stays in the drawer; adding it to the home screen only creates a copy.
-                fadeOutDragView(dragView)
+                if (folderIdByPlaceholder.containsKey(app)) {
+                    // Dropping a drawer folder on the home area is not
+                    // supported yet — fly it back instead of adding a stray
+                    // copy of its placeholder app.
+                    flyBack(dragView)
+                } else {
+                    val added = launcher.workspace.addAppFromDrawer(app) != null
+                    val text = if (added) R.string.oneui_drawer_drag_added else R.string.oneui_drawer_drag_no_space
+                    Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                    // The app stays in the drawer; adding it to the home screen only creates a copy.
+                    fadeOutDragView(dragView)
+                }
             }
             targetIndex >= 0 -> {
                 val list = ordered ?: return
                 val from = list.indexOf(app)
-                if (from >= 0) {
-                    val before = list.toList()
-                    val to = targetIndex.coerceIn(0, list.size)
-                    list.removeAt(from)
-                    // Exact-cell semantics: the icon lands in the previewed cell; the apps in
-                    // between shift by one to make room.
-                    list.add(to.coerceIn(0, list.size), app)
-                    if (list != before) {
-                        val wasCustom = prefs.drawerSortMode.get() ==
-                            LawnchairAlphabeticalAppsList.SORT_CUSTOM
+                val to = targetIndex.coerceIn(0, list.size)
+                val draggedIsFolder = folderIdByPlaceholder.containsKey(app)
+                val targetEntry = list.getOrNull(to)
+                val targetFolderId = targetEntry?.let { folderIdByPlaceholder[it] }
+                when {
+                    // Dragging onto another app merges them into a drawer folder.
+                    targetEntry != null && targetEntry !== app && targetFolderId == null && !draggedIsFolder -> {
+                        val folders = DrawerFolderStore.loadFolders(prefs)
+                        val id = "f${System.currentTimeMillis()}"
+                        val folder = DrawerFolderStore.Folder(
+                            id,
+                            context.getString(R.string.oneui_drawer_folder_name),
+                            mutableListOf(targetEntry.toComponentKey().toString(), app.toComponentKey().toString()),
+                        )
+                        folder.refreshPlaceholder()
+                        folders[id] = folder
+                        DrawerFolderStore.saveFolders(prefs, folders)
+                        // The dragged app leaves the top-level order; the
+                        // target app becomes the folder placeholder.
+                        if (from >= 0) list.removeAt(from)
+                        folderIdByPlaceholder[targetEntry] = id
                         commitOrder()
-                        if (!wasCustom) {
-                            Toast.makeText(
-                                context,
-                                R.string.oneui_drawer_drag_alphabetical,
-                                Toast.LENGTH_SHORT,
-                            ).show()
+                        Toast.makeText(context, R.string.oneui_drawer_folder_merged, Toast.LENGTH_SHORT).show()
+                    }
+                    // Dragging onto a folder adds the app to it.
+                    targetEntry != null && targetEntry !== app && targetFolderId != null && !draggedIsFolder -> {
+                        val folders = DrawerFolderStore.loadFolders(prefs)
+                        folders[targetFolderId]?.let { folder ->
+                            folder.keys.add(app.toComponentKey().toString())
+                            DrawerFolderStore.saveFolders(prefs, folders)
+                        }
+                        if (from >= 0) list.removeAt(from)
+                        commitOrder()
+                        Toast.makeText(context, R.string.oneui_drawer_folder_added, Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        if (from >= 0) {
+                            val before = list.toList()
+                            list.removeAt(from)
+                            // Exact-cell semantics: the icon lands in the previewed cell; the apps in
+                            // between shift by one to make room.
+                            list.add(to.coerceIn(0, list.size), app)
+                            if (list != before) {
+                                val wasCustom = prefs.drawerSortMode.get() ==
+                                    LawnchairAlphabeticalAppsList.SORT_CUSTOM
+                                commitOrder()
+                                if (!wasCustom) {
+                                    Toast.makeText(
+                                        context,
+                                        R.string.oneui_drawer_drag_alphabetical,
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            }
                         }
                     }
                 }
                 // The reflow preview already moved the neighbours; reset them
-                // instantly so the rebuilt grid (final order) takes over.
-                (launcher as? LawnchairLauncher)?.oneUiDrawerPagedGrid?.clearPreviewShift(instant = true)
+                // instantly and rebuild the grid from the committed order so
+                // the drop result (move / merge) is visible immediately.
+                (launcher as? LawnchairLauncher)?.let { launcherLauncher ->
+                    launcherLauncher.oneUiDrawerPagedGrid.clearPreviewShift(instant = true)
+                    launcherLauncher.syncOneUiDrawerPagedGrid()
+                }
                 animateDragViewToTarget(dragView)
             }
             else -> flyBack(dragView)

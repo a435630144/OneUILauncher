@@ -52,7 +52,9 @@ class OneUiDrawerPagedGrid(
 
     private val launcher: Launcher = Launcher.getLauncher(context)
     private val prefs: PreferenceManager = PreferenceManager.getInstance(context)
-    private var apps: List<AppInfo> = emptyList()
+    private var apps: List<Any> = emptyList()
+    private var appsByKey: Map<String, AppInfo> = emptyMap()
+    private var folderByPlaceholder = HashMap<String, DrawerFolderStore.Folder>()
     private val pageDotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     init {
@@ -67,10 +69,25 @@ class OneUiDrawerPagedGrid(
         )
     }
 
-    /** Rebuilds the pages from [list] (display order of the drawer). */
-    fun setApps(list: List<AppInfo>) {
+    /**
+     * Rebuilds the pages from [list]: plain [AppInfo] entries or drawer
+     * folders ([DrawerFolderStore.Folder]), rendered through their first
+     * member so drag flows keep seeing an AppInfo tag.
+     */
+    fun setEntries(list: List<Any>, byKey: Map<String, AppInfo>) {
         apps = list
+        appsByKey = byKey
+        folderByPlaceholder.clear()
+        for (entry in list) {
+            val folder = entry as? DrawerFolderStore.Folder ?: continue
+            folder.placeholderKey?.let { folderByPlaceholder[it] = folder }
+        }
         syncPages()
+    }
+
+    private fun folderOf(tag: Any?): DrawerFolderStore.Folder? {
+        val app = tag as? AppInfo ?: return null
+        return folderByPlaceholder[app.toComponentKey().toString()]
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -129,13 +146,50 @@ class OneUiDrawerPagedGrid(
                 gravity = Gravity.CENTER_HORIZONTAL
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setOnClickListener(ItemClickHandler.INSTANCE)
+                // Folders open a sheet; plain apps launch through the shared handler.
+                setOnClickListener { v ->
+                    val folder = folderOf(v.tag)
+                    if (folder != null) {
+                        showFolderSheet(folder)
+                    } else {
+                        ItemClickHandler.INSTANCE.onClick(v)
+                    }
+                }
                 setOnLongClickListener { v ->
                     startDrawerDrag(v as BubbleTextView)
                 }
             }
-            val app = apps.getOrNull(index)
-            if (app != null) {
+            val entry = apps.getOrNull(index)
+            val folder = entry as? DrawerFolderStore.Folder
+            if (folder != null) {
+                val placeholder = folder.placeholderKey?.let { appsByKey[it] }
+                if (placeholder != null) {
+                    // Render the folder through a clone of its first member so
+                    // the composed preview tile and folder title show up while
+                    // the drag pipeline still sees a plain AppInfo tag.
+                    val folderTitle = folder.title.ifBlank {
+                        context.getString(com.android.launcher3.R.string.oneui_drawer_folder_name)
+                    }
+                    val tempApp = AppInfo().apply {
+                        componentName = placeholder.componentName
+                        user = placeholder.user
+                        intent = placeholder.intent
+                        title = folderTitle
+                        bitmap = com.android.launcher3.icons.BitmapInfo.of(
+                            folderPreviewBitmap(folder),
+                            placeholder.bitmap.color,
+                        )
+                    }
+                    cellView.applyFromApplicationInfo(tempApp)
+                    cellView.text = folderTitle
+                    cellView.tag = tempApp
+                    cellView.visibility = VISIBLE
+                } else {
+                    cellView.visibility = INVISIBLE
+                    cellView.tag = null
+                }
+            } else if (entry != null) {
+                val app = entry as AppInfo
                 cellView.applyFromApplicationInfo(app)
                 cellView.tag = app
                 cellView.visibility = VISIBLE
@@ -146,6 +200,82 @@ class OneUiDrawerPagedGrid(
             page.addView(cellView)
         }
     }
+
+    /** One UI folder preview: rounded tile with up to four member icons. */
+    private fun folderPreviewBitmap(folder: DrawerFolderStore.Folder): android.graphics.Bitmap {
+        val size = (48f * resources.displayMetrics.density).roundToInt()
+        val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33FFFFFF }
+        val radius = size * 0.28f
+        canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), radius, radius, bg)
+        val members = folder.keys.mapNotNull { appsByKey[it] }.take(4)
+        val cell = size / 2f
+        val iconSize = cell * 0.62f
+        members.forEachIndexed { i, app ->
+            val icon = app.bitmap.icon
+            if (icon != null) {
+                val left = (i % 2) * cell + (cell - iconSize) / 2f
+                val top = (i / 2) * cell + (cell - iconSize) / 2f
+                val src = android.graphics.Rect(0, 0, icon.width, icon.height)
+                val dst = android.graphics.RectF(left, top, left + iconSize, top + iconSize)
+                canvas.drawBitmap(icon, src, dst, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+            }
+        }
+        return bitmap
+    }
+
+    /** One UI drawer folder sheet: tap a member to launch it. */
+    private fun showFolderSheet(folder: DrawerFolderStore.Folder) {
+        val density = resources.displayMetrics.density
+        val container = android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding((20 * density).roundToInt(), (12 * density).roundToInt(), (20 * density).roundToInt(), (12 * density).roundToInt())
+        }
+        for (key in folder.keys) {
+            val app = appsByKey[key] ?: continue
+            val row = android.widget.LinearLayout(context).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, (10 * density).roundToInt(), 0, (10 * density).roundToInt())
+            }
+            val iconView = android.widget.ImageView(context).apply {
+                app.bitmap.icon?.let { setImageBitmap(it) }
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    (40 * density).roundToInt(), (40 * density).roundToInt(),
+                )
+            }
+            val label = android.widget.TextView(context).apply {
+                text = app.title
+                textSize = 16f
+                val attrs = context.obtainStyledAttributes(
+                    intArrayOf(android.R.attr.textColorPrimary),
+                )
+                setTextColor(attrs.getColor(0, Color.WHITE))
+                attrs.recycle()
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+                ).apply { marginStart = (16 * density).roundToInt() }
+            }
+            row.addView(iconView)
+            row.addView(label)
+            row.setOnClickListener {
+                sheetDialog?.dismiss()
+                launcher.startActivitySafely(it, app.intent, app)
+            }
+            container.addView(row)
+        }
+        val scroll = android.widget.ScrollView(context).apply { addView(container) }
+        sheetDialog = android.app.AlertDialog.Builder(context)
+            .setTitle(folder.title.ifBlank {
+                context.getString(com.android.launcher3.R.string.oneui_drawer_folder_name)
+            })
+            .setView(scroll)
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private var sheetDialog: android.app.AlertDialog? = null
 
     private fun startDrawerDrag(view: BubbleTextView): Boolean {
         val app = view.tag as? AppInfo ?: return false
