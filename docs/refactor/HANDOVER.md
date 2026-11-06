@@ -47,6 +47,10 @@ workspace），tap 判定（位移<touchSlop）移入 Workspace.onTouchEvent：t
 目标页并退出编辑、tap + 卡片建页。
 **v0.37**：抽屉页点固定屏幕——onDraw 绘制 x 加 scrollX 抵消 PagedView
 scrollTo 的 canvas 平移（页点曾随第一页滑出屏幕）。
+**v0.38**：抽屉应用名渲染修复——cell 换 LinearLayout，应用名合成进图标
+位图（composeLabeledIcon）；BubbleTextView 裸构造在本网格的标签渲染不可靠。
+**构建坑**：OneDrive+配置缓存下 assemble 会误报 up-to-date 吞掉源码改动，
+验证编译用 --no-configuration-cache。
 
 当前 APK：
 

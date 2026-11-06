@@ -512,6 +512,25 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.38 — 抽屉应用名渲染修复（2026-11-07）
+
+**BUG：抽屉应用名不可见（用户报告，长期反复）**
+
+- **症状**：分页网格的应用名不渲染（无障碍树里 text 全部存在，像素消失）；
+  偶发个别格子（WebView Browser Tester）可见。
+- **排查**：dumpsys + 临时日志确认——text 已 setText、Layout 已生成
+  （BoringLayout，baseline 顶部）、颜色正常，即 TextView 首次布局路径在
+  本网格的手动布局下不可靠；改 compound padding / setDisplay / 强制重排均无效。
+- **修复**：`OneUiDrawerPagedGrid` 的 cell 从 BubbleTextView 换成自绘
+  LinearLayout（ImageView + TextView），**应用名直接合成进图标位图**
+  （`composeLabeledIcon`：图标 + 底部居中 13sp 标签、单行省略）——
+  ImageView 路径在本网格中已验证始终渲染。点击/长按/拖拽/文件夹分支
+  全部保留（tag 仍为 AppInfo，拖拽入口签名放宽为 View）。
+- **构建教训**：本机器（OneDrive 路径 + Gradle 配置缓存）下，源码已改但
+  assemble 仍报 up-to-date 且不重打包——`--rerun-tasks` 会踩无关的 AIDL
+  编码问题；可靠做法 = `--no-configuration-cache` + 直接跑编译任务核对
+  真实错误。此前多轮「构建成功」实为缓存误报。
+
 ## v0.37 — 抽屉页点固定屏幕（2026-11-07）
 
 **BUG：抽屉页点随第一页滑动（用户报告）**

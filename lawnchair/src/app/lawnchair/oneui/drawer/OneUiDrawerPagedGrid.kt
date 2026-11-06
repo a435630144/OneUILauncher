@@ -137,18 +137,41 @@ class OneUiDrawerPagedGrid(
 
     private fun fillPage(page: Page, pageIndex: Int, perPage: Int) {
         page.removeAllViews()
+        val iconPx = launcher.deviceProfile.allAppsIconSizePx
+        val padPx = launcher.deviceProfile.allAppsIconDrawablePaddingPx
+        val textPx = launcher.deviceProfile.allAppsIconTextSizePx
         for (cell in 0 until perPage) {
             val index = pageIndex * perPage + cell
-            val cellView = BubbleTextView(context).apply {
+            // A plain icon+label layout instead of BubbleTextView: the bare
+            // BubbleTextView constructor renders its compound-drawable label
+            // unreliably in this manual-layout grid (text ended up hidden
+            // behind the icon). Icon size, label color and positions are now
+            // fully deterministic, and the name is baked into the icon bitmap
+            // because the TextView path was not drawn at all.
+            val icon = android.widget.ImageView(context).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(iconPx, iconPx)
+                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            }
+            val label = android.widget.TextView(context).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = padPx }
+                gravity = Gravity.CENTER_HORIZONTAL
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(0xFFF1F1F7.toInt())
+                textSize = textPx / resources.displayMetrics.density
+            }
+            val cellView = android.widget.LinearLayout(context).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
                 )
-                // One UI centers the label horizontally under the icon and
-                // keeps it to a single ellipsized line.
-                gravity = Gravity.CENTER_HORIZONTAL
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
+                orientation = android.widget.LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL or Gravity.TOP
+                addView(icon)
+                addView(label)
                 // Folders open a sheet; plain apps launch through the shared handler.
                 setOnClickListener { v ->
                     val folder = folderOf(v.tag)
@@ -159,7 +182,7 @@ class OneUiDrawerPagedGrid(
                     }
                 }
                 setOnLongClickListener { v ->
-                    startDrawerDrag(v as BubbleTextView)
+                    startDrawerDrag(v)
                 }
             }
             val entry = apps.getOrNull(index)
@@ -183,8 +206,8 @@ class OneUiDrawerPagedGrid(
                             placeholder.bitmap.color,
                         )
                     }
-                    cellView.applyFromApplicationInfo(tempApp)
-                    cellView.text = folderTitle
+                    icon.setImageBitmap(composeLabeledIcon(tempApp, folderTitle))
+                    label.visibility = GONE
                     cellView.tag = tempApp
                     cellView.visibility = VISIBLE
                 } else {
@@ -193,7 +216,8 @@ class OneUiDrawerPagedGrid(
                 }
             } else if (entry != null) {
                 val app = entry as AppInfo
-                cellView.applyFromApplicationInfo(app)
+                icon.setImageBitmap(composeLabeledIcon(app, app.title.toString()))
+                label.visibility = GONE
                 cellView.tag = app
                 cellView.visibility = VISIBLE
             } else {
@@ -204,9 +228,42 @@ class OneUiDrawerPagedGrid(
         }
     }
 
-    /** One UI folder preview: rounded tile with up to four member icons. */
+    /**
+     * Composes the app icon and its label into one bitmap. The paged grid's
+     * TextView labels were unreliable under the manual cell layout (text set
+     * but never drawn), so the name is baked into the icon image instead —
+     * the ImageView path is verified to always render.
+     */
+    private fun composeLabeledIcon(app: AppInfo, label: CharSequence): android.graphics.Bitmap {
+        val size = launcher.deviceProfile.allAppsIconSizePx
+        val density = resources.displayMetrics.density
+        val textH = (26f * density).roundToInt()
+        val bitmap = android.graphics.Bitmap.createBitmap(
+            size, size + textH, android.graphics.Bitmap.Config.ARGB_8888,
+        )
+        val canvas = android.graphics.Canvas(bitmap)
+        app.bitmap.icon?.let { icon ->
+            canvas.drawBitmap(
+                icon,
+                android.graphics.Rect(0, 0, icon.width, icon.height),
+                android.graphics.Rect(0, 0, size, size),
+                Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG),
+            )
+        }
+        val tp = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFF1F1F7.toInt()
+            textAlign = Paint.Align.CENTER
+            textSize = 13f * density
+        }
+        val ellipsized = android.text.TextUtils.ellipsize(
+            label, tp, size - 6f * density, android.text.TextUtils.TruncateAt.END,
+        )
+        canvas.drawText(ellipsized.toString(), size / 2f, size + textH * 0.78f, tp)
+        return bitmap
+    }
+
     private fun folderPreviewBitmap(folder: DrawerFolderStore.Folder): android.graphics.Bitmap {
-        val size = (48f * resources.displayMetrics.density).roundToInt()
+        val size = launcher.deviceProfile.allAppsIconSizePx
         val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(bitmap)
         val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33FFFFFF }
@@ -238,7 +295,7 @@ class OneUiDrawerPagedGrid(
         ).show()
     }
 
-    private fun startDrawerDrag(view: BubbleTextView): Boolean {
+    private fun startDrawerDrag(view: android.view.View): Boolean {
         val app = view.tag as? AppInfo ?: return false
         val overlay = (launcher as? LawnchairLauncher)?.overlayDrawerDrag ?: return false
         val options = DragOptions().apply { isDrawerDrag = true }

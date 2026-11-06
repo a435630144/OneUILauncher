@@ -346,6 +346,13 @@ class LawnchairLauncher : QuickstepLauncher() {
             ?: emptyMap()
         val entries = buildDrawerEntries(appsByKey)
         oneUiDrawerPagedGrid.setEntries(entries, appsByKey)
+        // Cells are built while detached; the first pass can leave the
+        // labels un-laid-out (text nodes exist but never draw). One deferred
+        // relayout once everything is attached makes the first paint correct.
+        oneUiDrawerPagedGrid.post {
+            oneUiDrawerPagedGrid.requestLayout()
+            oneUiDrawerPagedGrid.invalidate()
+        }
         appsView.appsRecyclerViewContainer.visibility = android.view.View.INVISIBLE
         // The paged grid has no scrollbar; the rail belongs to the list mode only.
         appsView.findViewById<android.view.View>(com.android.launcher3.R.id.fast_scroller)?.visibility = android.view.View.INVISIBLE

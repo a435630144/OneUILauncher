@@ -130,3 +130,7 @@ res/drawable/round_rect_folder.xml
 
 // v0.37: 抽屉页点固定屏幕——OneUiDrawerPagedGrid.onDraw 绘制 x 加 scrollX 抵消
 // PagedView scrollTo 的 canvas 平移（页点曾随第一页滑出屏幕）。
+
+// v0.38: 抽屉应用名渲染修复——OneUiDrawerPagedGrid cell 改 LinearLayout(ImageView+TextView)，
+// 应用名 composeLabeledIcon 合成进图标位图（compound 标签路径在本网格不可靠）；
+// 构建坑：OneDrive+配置缓存下源码改动可能被 up-to-date 误报吞掉，用 --no-configuration-cache 验证。
