@@ -122,8 +122,6 @@ class OneUiDrawerDragOverlay(
     private var pageCount = 1
 
     /** 0 → 1 transition for the edit-mode card fade / scale-in. */
-    private var editProgress = 0f
-    private var editAnimator: ValueAnimator? = null
 
     private var targetIndex = -1
     private val targetRect = Rect()
@@ -261,12 +259,11 @@ class OneUiDrawerDragOverlay(
         // move and the menu is cancelled before it ever appears).
         dragStartSet = false
         overlayTopOnScreen = -1
-        // The overlay takes over completely; the live list (and its search capsule) hide.
+        // The live grid stays fully visible in edit mode (One UI: same icons,
+        // same positions); the overlay only draws the landing outline and the
+        // add-to-home band. This also keeps the reflow preview animation
+        // visible on the real cells.
         visibility = VISIBLE
-        appsView.visibility = INVISIBLE
-        // Play the One UI edit-mode enter transition (scrim fade + card scale-in).
-        startEditAnimation()
-        startEditAnimation()
         // One UI shows the item menu only when the icon is held still. A short delay keeps the
         // menu from flashing when the drag starts moving straight away.
         val source = dragObject.originalView as? View
@@ -293,33 +290,12 @@ class OneUiDrawerDragOverlay(
         addToHomeEdge = 0
         pageAnimator?.cancel()
         pageAnimator = null
-        editAnimator?.cancel()
-        editAnimator = null
-        editProgress = 0f
-        appsView.visibility = VISIBLE
         visibility = INVISIBLE
         invalidate()
     }
 
     // endregion
 
-    // region Edit-mode enter animation
-
-    private fun startEditAnimation() {
-        editAnimator?.cancel()
-        editProgress = 0f
-        editAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 220
-            interpolator = this@OneUiDrawerDragOverlay.interpolator
-            addUpdateListener {
-                editProgress = it.animatedValue as Float
-                invalidate()
-            }
-            start()
-        }
-    }
-
-    // endregion
 
     // region DropTarget
 
@@ -653,16 +629,9 @@ class OneUiDrawerDragOverlay(
     }
 
     private fun animatePage(target: Int) {
-        pageAnimator?.cancel()
-        pageAnimator = ValueAnimator.ofFloat(pageOffset, target.toFloat()).apply {
-            duration = 220
-            interpolator = this@OneUiDrawerDragOverlay.interpolator
-            addUpdateListener {
-                pageOffset = it.animatedValue as Float
-                invalidate()
-            }
-            start()
-        }
+        // The real paged grid handles the flip (with its own animation); the
+        // overlay only tracks which page is under the drag.
+        (launcher as? LawnchairLauncher)?.oneUiDrawerPagedGrid?.snapToPage(target)
         page = target
     }
 
@@ -972,63 +941,15 @@ class OneUiDrawerDragOverlay(
         if (target.isEmpty) return
         val grid = gridRect(target, tmpGrid)
 
-        // Edit-mode enter transition: the scrim fades in and the paged card scales out
-        // from the full drawer area to its resting rect (One UI edit-mode transition).
-        val p = editProgress
-        val inv = 1f - p
-        if (p <= 0.01f) return
-        val card = RectF(
-            target.left * p,
-            target.top * p,
-            width - inv * (width - target.right),
-            height - inv * (height - target.bottom),
-        )
-
-        dimPaint.alpha = (215 * p).toInt()
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
-
-        val cellW = grid.width().toFloat() / gridCols
-        val cellH = grid.height().toFloat() / gridRows
-        val iconSize = iconSize(cellW, cellH)
-
-        // Neighbouring pages peek from the screen edges as light rounded strips, exactly like the
-        // One UI paged editor. They are drawn at rest only, while a page flip animation moves the
-        // incoming page itself.
-        if (pageOffset == page.toFloat() && p > 0.6f) {
-            drawNeighborStrips(canvas, grid)
-        }
-
-        val currentLeft = pageX(page, target).toFloat()
-        val pageCard = RectF(
-            currentLeft,
-            card.top.toFloat(),
-            currentLeft + card.width(),
-            card.bottom.toFloat(),
-        )
-        val radius = 24f * density
-        canvas.drawRoundRect(pageCard, radius, radius, cardPaint)
-
-        val hInset = grid.left - target.left
-        val pageGrid = RectF(
-            currentLeft + hInset,
-            grid.top.toFloat(),
-            currentLeft + card.width() - hInset,
-            grid.bottom.toFloat(),
-        )
-        // Content fades in with the transition.
-        val contentAlpha = (255 * p).toInt().coerceIn(0, 255)
-        val save = canvas.saveLayerAlpha(pageCard, contentAlpha)
-        drawDots(canvas, pageGrid, cellW, cellH)
-        drawPageApps(canvas, list, page, pageGrid, iconSize)
-        if (targetIndex >= 0 && !targetRect.isEmpty) {
-            drawTargetOutline(canvas, cellW, cellH)
-        }
-        canvas.restoreToCount(save)
-
+        // The live drawer grid stays visible as-is (One UI edit mode keeps the
+        // same icons and positions); the overlay only adds the landing
+        // outline and the add-to-home band on top of it.
         if (addToHomeEdge != 0) {
             drawAddToHome(canvas, target)
-        } else if (p > 0.6f) {
-            drawPageDots(canvas, target, pageCount, page)
+        } else if (targetIndex >= 0 && !targetRect.isEmpty) {
+            val cellW = grid.width().toFloat() / gridCols
+            val cellH = grid.height().toFloat() / gridRows
+            drawTargetOutline(canvas, cellW, cellH)
         }
     }
 

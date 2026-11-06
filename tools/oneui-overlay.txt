@@ -153,3 +153,7 @@ res/drawable/round_rect_folder.xml
 
 // v0.44: 文件夹内长按菜单——Folder.onLongClick 挂 BubbleTextView.startLongPressAction()
 // pre-drag（与主屏图标一致），长按弹菜单、移动超 slop 进拖拽。
+
+// v0.45: 编辑模式回归真实网格——appsView 不再 INVISIBLE、overlay 移除自绘网格
+// （scrim/card/dots/drawPageApps/editProgress 全删），只保留落点描边+投主屏带；
+// previewShift 动画在真实 cell 上可见；翻页 animatePage 改驱动真实 pagedGrid snapToPage。

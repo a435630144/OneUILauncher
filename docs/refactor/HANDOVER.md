@@ -65,6 +65,8 @@ scale/pivot/scroll）；卡片延伸区用卡片自身背景 drawable 绘制（�
 onLayout（restorePendingPage 两段式），恢复前网格 INVISIBLE。
 **v0.44**：文件夹内长按菜单——Folder.onLongClick 挂 startLongPressAction()
 pre-drag（原版直接拖拽无菜单）。
+**v0.45**：编辑模式回归真实网格——移除 overlay 自绘（压暗/缩放/自绘图标），
+appsView 保持可见，让位动画在真实 cell 上可见，翻页驱动真实 snapToPage。
 
 当前 APK：
 
