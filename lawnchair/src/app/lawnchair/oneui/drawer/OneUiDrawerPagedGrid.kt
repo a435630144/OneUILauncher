@@ -90,6 +90,14 @@ class OneUiDrawerPagedGrid(
         return folderByPlaceholder[app.toComponentKey().toString()]
     }
 
+    /** Persists the browsed page so the next drawer open lands here directly. */
+    override fun notifyPageSwitchListener(prevPage: Int) {
+        super.notifyPageSwitchListener(prevPage)
+        if (mCurrentPage != prefs.drawerLastPage.get()) {
+            prefs.drawerLastPage.set(mCurrentPage)
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         // One UI page dots sit just above the docked search capsule, centered,
@@ -130,8 +138,14 @@ class OneUiDrawerPagedGrid(
         for (pageIndex in 0 until childCount) {
             fillPage(getPageAt(pageIndex) as Page, pageIndex, perPage)
         }
-        if (mCurrentPage >= childCount) {
-            snapToPage(childCount - 1)
+        // Restore the last browsed page *before* the first frame: the grid is
+        // rebuilt on every drawer open and the page index resets, which used
+        // to flash page 0 before jumping to the remembered page.
+        val saved = prefs.drawerLastPage.get()
+        val target = if (saved in 0 until childCount) saved else 0
+        setCurrentPage(target)
+        if (target != 0) {
+            scrollTo(getScrollForPage(target), 0)
         }
     }
 

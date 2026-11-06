@@ -512,6 +512,18 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.40 — 抽屉页恢复修复（2026-11-07）
+
+**BUG：抽屉重开先闪第 1 页再跳上次页（用户报告）**
+
+- **根因**：抽屉每次打开都重建分页网格，页索引被重置为 0，第一帧渲染
+  第 1 页，之后才跳到记忆的页。
+- **修复**：新增 `pref_drawerLastPage` 持久化浏览页——
+  `notifyPageSwitchListener` 翻页即保存；`syncPages` 重建完成后
+  **在首帧渲染前** `setCurrentPage(saved)` + `scrollTo(getScrollForPage)`
+  直接定位，无闪烁。模拟器验证：浏览到第 2 页 → 回桌面 → 重开抽屉
+  直接落在第 2 页（页点第 2 高亮）。
+
 ## v0.39 — 拖拽无动画真凶修复（2026-11-07）
 
 **BUG：拖拽图标无让位动画（用户报告，真因）**

@@ -55,6 +55,8 @@ scrollTo 的 canvas 平移（页点曾随第一页滑出屏幕）。
 beginDragShared NPE、拖拽从未启动；新增 DraggableCellView 修复。
 **调试手段**：模拟器窗口移主屏后用 Computer Use 鼠标长按拖拽（真实触摸）
 + logcat -s DragFlow PreviewShift；adb long-press 注入不可靠。
+**v0.40**：抽屉重开闪烁修复——浏览页持久化（pref_drawerLastPage），
+syncPages 首帧前直接定位上次页。
 
 当前 APK：
 

@@ -138,3 +138,6 @@ res/drawable/round_rect_folder.xml
 // v0.39: 拖拽无动画真凶——OneUiDrawerPagedGrid 新增 DraggableCellView
 // （LinearLayout 实现 DraggableView），修复 beginDragShared NPE（v0.38 引入）；
 // 调试用 Computer Use 鼠标长按拖拽替代 adb 注入（adb long-press 不可靠）。
+
+// v0.40: 抽屉页恢复——pref_drawerLastPage + notifyPageSwitchListener 保存 +
+// syncPages 首帧前 setCurrentPage+scrollTo 直接定位（消除第 1 页闪烁）。

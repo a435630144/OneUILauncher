@@ -144,6 +144,9 @@ class PreferenceManager private constructor(private val context: Context) :
     /** JSON map of drawer folder id -> {title, keys} (see DrawerFolderStore). */
     val drawerFolders = StringPref("pref_drawerFolders", "{}", refreshAllApps)
 
+    /** Last browsed drawer page (custom sort), restored on the next open without a flash. */
+    val drawerLastPage = IntPref("pref_drawerLastPage", 0)
+
     /** JSON object of ComponentKey -> launch count, backing the most-used drawer sort. */
     val appLaunchCounts = StringPref("pref_appLaunchCounts", "{}", refreshAllApps)
 
