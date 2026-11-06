@@ -61,6 +61,8 @@ syncPages 首帧前直接定位上次页。
 延伸区底部淡色横线与卡片分隔（用户红笔标注复刻）。
 **v0.42**：时钟小组件编辑模式跟随 workspace 缩放（syncTransform 镜像
 scale/pivot/scroll）；卡片延伸区用卡片自身背景 drawable 绘制（视觉同源）。
+**v0.43**：抽屉打开闪烁真修——页滚动表在首次布局才就绪，恢复移到
+onLayout（restorePendingPage 两段式），恢复前网格 INVISIBLE。
 
 当前 APK：
 

@@ -83,7 +83,21 @@ class OneUiDrawerPagedGrid(
             folder.placeholderKey?.let { folderByPlaceholder[it] = folder }
         }
         syncPages()
+        // The saved page can only be scrolled to after the first layout pass
+        // (page scrolls are computed there). Until then the grid stays
+        // hidden, so the user never sees the un-restored page 0 flash.
+        val saved = prefs.drawerLastPage.get()
+        restorePendingPage = if (saved in 0 until childCount) saved else -1
+        if (restorePendingPage > 0) {
+            visibility = INVISIBLE
+        }
     }
+
+    /** Page awaiting scroll restoration after the first layout, or -1. */
+    private var restorePendingPage = -1
+
+    /** True while the grid hides itself until the saved page is restored. */
+    val isRestorePending: Boolean get() = restorePendingPage > 0
 
     private fun folderOf(tag: Any?): DrawerFolderStore.Folder? {
         val app = tag as? AppInfo ?: return null
@@ -138,14 +152,24 @@ class OneUiDrawerPagedGrid(
         for (pageIndex in 0 until childCount) {
             fillPage(getPageAt(pageIndex) as Page, pageIndex, perPage)
         }
-        // Restore the last browsed page *before* the first frame: the grid is
-        // rebuilt on every drawer open and the page index resets, which used
-        // to flash page 0 before jumping to the remembered page.
-        val saved = prefs.drawerLastPage.get()
-        val target = if (saved in 0 until childCount) saved else 0
-        setCurrentPage(target)
-        if (target != 0) {
+        if (mCurrentPage >= childCount) {
+            snapToPage(childCount - 1)
+        }
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        super.onLayout(changed, l, t, r, b)
+        // Page scrolls are computed inside super.onLayout — only now can the
+        // saved page be restored. The grid stays hidden until this lands, so
+        // the user never sees page 0 flash before the remembered page.
+        if (restorePendingPage >= 0) {
+            val target = restorePendingPage.coerceIn(0, childCount - 1)
+            setCurrentPage(target)
             scrollTo(getScrollForPage(target), 0)
+            restorePendingPage = -1
+            if (visibility == INVISIBLE) {
+                visibility = VISIBLE
+            }
         }
     }
 

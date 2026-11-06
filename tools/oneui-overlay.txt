@@ -147,3 +147,6 @@ res/drawable/round_rect_folder.xml
 
 // v0.42: 编辑模式时钟跟随（OneUiClockView.syncTransform 镜像 workspace scale/pivot/scroll）+ 
 // 卡片延伸区用 CellLayout 背景 drawable 绘制（clip 底部圆角），垃圾桶居中延伸区。
+
+// v0.43: 抽屉打开闪烁真修——恢复两段式：setEntries 记 restorePendingPage 并 INVISIBLE，
+// onLayout（页滚动表就绪）setCurrentPage+scrollTo 后 VISIBLE。

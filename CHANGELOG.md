@@ -512,6 +512,22 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.43 — 抽屉打开闪烁真修（2026-11-07）
+
+**BUG：上滑进抽屉先闪第 1 页（v0.40 修复不彻底，用户复报）**
+
+- **根因**：v0.40 在 `syncPages` 里 `setCurrentPage(saved) + scrollTo`，但
+  `getScrollForPage` 依赖的页滚动表要在**首次布局**（PagedView.onLayout）时
+  才计算——恢复时滚动表未就绪，scrollTo 无效，第一帧仍是第 1 页；布局完成
+  后才校正到记忆页（伴随图标尺寸的中间帧）。
+- **修复**：恢复改为两段式——`setEntries` 时记录 `restorePendingPage`
+  并把网格置 INVISIBLE；`onLayout`（页滚动表就绪后）执行
+  `setCurrentPage + scrollTo` 校正，随即恢复 VISIBLE。用户全程看不到
+  未恢复的第 1 页。
+- **附带**：`LawnchairLauncher` 的网格可见性改由 `isRestorePending` 决定。
+- 模拟器验证：浏览到第 2 页 → 回桌面 → 重开抽屉直接落在第 2 页
+  （页点第 2 高亮），无闪烁。
+
 ## v0.42 — 编辑模式时钟跟随 + 卡片延伸区真实现（2026-11-07）
 
 **用户报告三问题**

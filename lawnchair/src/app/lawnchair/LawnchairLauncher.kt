@@ -349,14 +349,15 @@ class LawnchairLauncher : QuickstepLauncher() {
         // Cells are built while detached; the first pass can leave the
         // labels un-laid-out (text nodes exist but never draw). One deferred
         // relayout once everything is attached makes the first paint correct.
-        oneUiDrawerPagedGrid.post {
-            oneUiDrawerPagedGrid.requestLayout()
-            oneUiDrawerPagedGrid.invalidate()
-        }
+        // (The grid itself also defers visibility while a page restore is
+        // pending — see OneUiDrawerPagedGrid.onLayout.)
         appsView.appsRecyclerViewContainer.visibility = android.view.View.INVISIBLE
-        // The paged grid has no scrollbar; the rail belongs to the list mode only.
+        // The paged grid has no scrollbar; the rail belongs to the list mode
+        // only. The grid stays INVISIBLE while a page restore is pending (see
+        // OneUiDrawerPagedGrid.onLayout) so page 0 never flashes.
         appsView.findViewById<android.view.View>(com.android.launcher3.R.id.fast_scroller)?.visibility = android.view.View.INVISIBLE
-        oneUiDrawerPagedGrid.visibility = android.view.View.VISIBLE
+        oneUiDrawerPagedGrid.visibility = if (oneUiDrawerPagedGrid.isRestorePending)
+            android.view.View.INVISIBLE else android.view.View.VISIBLE
     }
 
     /**
