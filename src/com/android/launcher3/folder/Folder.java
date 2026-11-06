@@ -366,7 +366,15 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     public boolean onLongClick(View v) {
         // Return if global dragging is not enabled
         if (!getIsLauncherDraggingEnabled()) return true;
-        return startDrag(v, new DragOptions());
+        // One UI: long-press inside a folder shows the app menu first; the
+        // icon becomes draggable once the pointer moves past the slop (the
+        // same pre-drag behavior as home screen icons).
+        DragOptions options = new DragOptions();
+        if (v instanceof com.android.launcher3.BubbleTextView) {
+            options.preDragCondition =
+                    ((com.android.launcher3.BubbleTextView) v).startLongPressAction();
+        }
+        return startDrag(v, options);
     }
 
     @VisibleForTesting

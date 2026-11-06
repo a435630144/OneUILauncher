@@ -150,3 +150,6 @@ res/drawable/round_rect_folder.xml
 
 // v0.43: 抽屉打开闪烁真修——恢复两段式：setEntries 记 restorePendingPage 并 INVISIBLE，
 // onLayout（页滚动表就绪）setCurrentPage+scrollTo 后 VISIBLE。
+
+// v0.44: 文件夹内长按菜单——Folder.onLongClick 挂 BubbleTextView.startLongPressAction()
+// pre-drag（与主屏图标一致），长按弹菜单、移动超 slop 进拖拽。

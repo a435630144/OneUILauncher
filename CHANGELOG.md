@@ -512,6 +512,17 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.44 — 文件夹内长按菜单修复（2026-11-07）
+
+**用户报告：文件夹内长按图标无反应**
+
+- **根因**：`Folder.onLongClick` 直接 `startDrag(v, new DragOptions())`——
+  没有挂主屏图标同款的 `preDragCondition`（长按菜单），长按只进拖拽、
+  无任何菜单反馈；且编辑模式等场景下拖拽被禁时直接消费事件。
+- **修复**：`Folder.onLongClick` 为 `BubbleTextView` 挂
+  `startLongPressAction()` pre-drag——长按弹出 One UI 应用菜单
+  （应用信息/卸载等，与主屏图标一致），指针移动超过 slop 后进入拖拽重排。
+
 ## v0.43 — 抽屉打开闪烁真修（2026-11-07）
 
 **BUG：上滑进抽屉先闪第 1 页（v0.40 修复不彻底，用户复报）**

@@ -63,6 +63,8 @@ syncPages 首帧前直接定位上次页。
 scale/pivot/scroll）；卡片延伸区用卡片自身背景 drawable 绘制（视觉同源）。
 **v0.43**：抽屉打开闪烁真修——页滚动表在首次布局才就绪，恢复移到
 onLayout（restorePendingPage 两段式），恢复前网格 INVISIBLE。
+**v0.44**：文件夹内长按菜单——Folder.onLongClick 挂 startLongPressAction()
+pre-drag（原版直接拖拽无菜单）。
 
 当前 APK：
 
