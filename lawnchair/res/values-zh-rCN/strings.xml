@@ -86,6 +86,8 @@
     <string name="oneui_edit_widgets">小组件</string>
     <string name="oneui_edit_settings">设置</string>
     <string name="oneui_drawer_folder_name">文件夹</string>
+    <string name="oneui_folder_add_apps_title">选择要添加的应用</string>
+    <string name="oneui_folder_add_apps_done">添加</string>
     <string name="oneui_drawer_folder_merged">已合并为文件夹</string>
     <string name="oneui_drawer_folder_added">已加入文件夹</string>
     <string name="oneui_drawer_folder_edit">编辑</string>

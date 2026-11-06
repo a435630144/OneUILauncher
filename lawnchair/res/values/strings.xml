@@ -99,6 +99,8 @@
     <string name="oneui_edit_widgets">Widgets</string>
     <string name="oneui_edit_settings">Settings</string>
     <string name="oneui_drawer_folder_name">Folder</string>
+    <string name="oneui_folder_add_apps_title">Select apps to add</string>
+    <string name="oneui_folder_add_apps_done">Add</string>
     <string name="oneui_drawer_folder_merged">Merged into folder</string>
     <string name="oneui_drawer_folder_added">Added to folder</string>
     <string name="oneui_drawer_folder_edit">Edit</string>

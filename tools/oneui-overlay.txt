@@ -119,3 +119,7 @@ res/drawable/round_rect_folder.xml
 // OneUiDrawerPagedGrid.showFolderSheet 改调新面板（删除旧 AlertDialog 列表）；
 // 成员点击复用 ItemClickHandler.onClick（连同 v0.25 的启动计数）；
 // 中英文案 oneui_drawer_folder_*。
+
+// v0.35: 主屏文件夹 ⊕ 添加应用（user_folder_icon_normalized 双份同步 + Folder.showAddAppsDialog
+// 多选入夹）+ 关键坑记录：lawnchair/res 同名布局运行时覆盖 res/（被覆盖版 @+id 不进 R），
+// drawable-v28 圆角同步。

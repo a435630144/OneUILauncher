@@ -97,6 +97,7 @@ import com.android.launcher3.logger.LauncherAtom.FromState;
 import com.android.launcher3.logger.LauncherAtom.ToState;
 import com.android.launcher3.logging.StatsLogManager;
 import com.android.launcher3.logging.StatsLogManager.StatsLogger;
+import com.android.launcher3.model.data.AppInfo;
 import com.android.launcher3.model.data.FolderInfo;
 import com.android.launcher3.model.data.FolderInfo.FolderListener;
 import com.android.launcher3.model.data.ItemInfo;
@@ -340,6 +341,12 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 (getFooterHeight() - mFolderName.getLineHeight()) / 2,
                 mFolderName.getPaddingRight(),
                 (getFooterHeight() - mFolderName.getLineHeight()) / 2);
+
+        // One UI ref09: the round plus opens the add-apps picker.
+        View addApps = findViewById(R.id.folder_add_apps);
+        if (addApps != null) {
+            addApps.setOnClickListener(v -> showAddAppsDialog());
+        }
 
         @ColorInt
         int accentColor = Themes.getColorAccent(mFolderName.getContext());
@@ -862,6 +869,61 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             return true;
         }
         return false;
+    }
+
+    /**
+     * One UI ref09: the round plus opens the add-apps picker. Selected apps
+     * are turned into workspace items inside this folder through the same
+     * path the drag-in flow uses.
+     */
+    private void showAddAppsDialog() {
+        Launcher launcher = mLauncherDelegate.getLauncher();
+        if (launcher == null || !mIsOpen) {
+            return;
+        }
+        AppInfo[] allApps = launcher.getAppsView().getAppsStore().getApps();
+        java.util.Set<String> memberKeys = new java.util.HashSet<>();
+        for (ItemInfo info : mInfo.getContents()) {
+            if (info.getTargetComponent() != null) {
+                memberKeys.add(info.getTargetComponent().flattenToString() + "#" + info.user.hashCode());
+            }
+        }
+        java.util.List<AppInfo> selectable = new java.util.ArrayList<>();
+        for (AppInfo app : allApps) {
+            String key = app.componentName.flattenToString() + "#" + app.user.hashCode();
+            if (!memberKeys.contains(key)) {
+                selectable.add(app);
+            }
+        }
+        if (selectable.isEmpty()) {
+            return;
+        }
+        CharSequence[] names = new CharSequence[selectable.size()];
+        for (int i = 0; i < selectable.size(); i++) {
+            names[i] = selectable.get(i).title;
+        }
+        boolean[] checked = new boolean[selectable.size()];
+        new android.app.AlertDialog.Builder(getContext())
+                .setTitle(R.string.oneui_folder_add_apps_title)
+                .setMultiChoiceItems(names, checked, (dialog, which, isChecked) ->
+                        checked[which] = isChecked)
+                .setPositiveButton(R.string.oneui_folder_add_apps_done, (dialog, which) -> {
+                    for (int i = 0; i < selectable.size(); i++) {
+                        if (!checked[i]) continue;
+                        WorkspaceItemInfo si = selectable.get(i).makeWorkspaceItem(launcher);
+                        si.rank = mInfo.getContents().size();
+                        View view = mContent.createAndAddViewForRank(si, si.rank);
+                        mLauncherDelegate.getModelWriter().addOrMoveItemInDatabase(
+                                si, mInfo.id, 0, si.cellX, si.cellY);
+                        // FolderInfo.add notifies the folder listeners, which
+                        // re-runs the grid layout for the new member.
+                        mInfo.add(si, false);
+                        view.setVisibility(VISIBLE);
+                    }
+                    mItemsInvalidated = true;
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     @Override

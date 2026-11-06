@@ -49,6 +49,23 @@
             android:textColorHighlight="?android:attr/colorControlHighlight"
             android:textColorHint="?attr/folderHintTextColor"/>
 
+        <!-- One UI ref09: round plus button opens the add-apps picker. -->
+        <TextView
+            android:id="@+id/folder_add_apps"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/oneui_folder_add_circle"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:importantForAccessibility="yes"
+            android:contentDescription="@string/oneui_folder_add_apps_title"
+            android:text="+"
+            android:textColor="?attr/folderTextColor"
+            android:textSize="18sp" />
+
         <com.android.launcher3.pageindicators.PageIndicatorDots
             android:id="@+id/folder_page_indicator"
             android:layout_gravity="center_vertical"

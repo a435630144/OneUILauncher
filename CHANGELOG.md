@@ -512,6 +512,28 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.35 — 主屏文件夹 ⊕ 添加应用 + 布局覆盖修复（2026-11-07）
+
+**主屏文件夹 ⊕（ref09 复刻）**
+
+- 文件夹标题栏新增**圆形 ⊕ 按钮**（`folder_add_apps`，描边圆圈 + 号，
+  folderTextColor 主题色）；点击弹**多选应用对话框**（排除已是成员的应用），
+  「添加」把勾选应用经 `makeWorkspaceItem` → `createAndAddViewForRank` →
+  `addOrMoveItemInDatabase(container=folderId)` → `FolderInfo.add` 写入文件夹
+  （与拖入同一持久化路径），网格即时重排。
+- 中英文案：选择要添加的应用 / 添加。
+
+**⚠️ 关键修复：资源覆盖导致改动静默失效**
+
+- `lawnchair/res/layout/user_folder_icon_normalized.xml` **覆盖**
+  `res/layout/` 同名文件（flavor sourceSet 合并规则），此前 One UI 化布局
+  （标题栏移顶部、⊗ 圆角）与 ⊕ 全部写在 res/ 里而**运行时用的是 lawnchair
+  版本**——且被覆盖版本里的 `@+id` 不进 R（`R.id.folder_add_apps`
+  编译失败的真正原因，不是资源缓存）。
+- 已同步两份布局；`res/drawable-v28/round_rect_folder.xml` 圆角同步 28dp
+  （API 28+ 不再走系统 dialogCornerRadius）。
+- **教训**：改 `res/` 布局前必须查 `lawnchair/res/layout/` 是否有同名覆盖。
+
 ## v0.34 — 抽屉文件夹管理面板 + 启动计数（2026-11-06）
 
 **文件夹管理面板（新增 `OneUiDrawerFolderSheet.kt`）**
