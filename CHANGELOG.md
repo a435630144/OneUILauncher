@@ -512,6 +512,24 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.39 — 拖拽无动画真凶修复（2026-11-07）
+
+**BUG：拖拽图标无让位动画（用户报告，真因）**
+
+- **根因**：v0.38 把网格 cell 从 BubbleTextView 换成 LinearLayout 时，丢失了
+  `DraggableView` 接口实现——`Workspace.beginDragShared` →
+  `DragController.startDrag` 里调用 `draggableView.getViewType()` 时 NPE
+  （`DraggableView` 为 null），**拖拽从未真正启动**，所有拖拽交互
+  （让位预览/描边/落点/翻页）全部失效。通过 Computer Use 鼠标长按拖拽
+  复现崩溃堆栈定位。
+- **修复**：新增 `DraggableCellView`（LinearLayout 实现 `DraggableView`：
+  `getViewType()=DRAGGABLE_ICON`、`getSourceVisualDragBounds` 返回整格），
+  cell 换用该类。拖拽管线（`DragPreviewProvider` 位图渲染、`DragView`、
+  让位预览、落点）全部恢复。
+- **调试手段升级**：模拟器窗口移到主屏后用 **Computer Use 鼠标事件**
+  驱动真实长按拖拽（adb 注入手势 long-press 始终不可靠），配合
+  `logcat -s DragFlow PreviewShift` 定位。
+
 ## v0.38 — 抽屉应用名渲染修复（2026-11-07）
 
 **BUG：抽屉应用名不可见（用户报告，长期反复）**

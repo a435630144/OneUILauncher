@@ -329,6 +329,7 @@ class OneUiDrawerDragOverlay(
     override fun onDragEnter(dragObject: DropTarget.DragObject) = Unit
 
     override fun onDragOver(dragObject: DropTarget.DragObject) {
+        android.util.Log.d("DragFlow", "onDragOver x=${dragObject.x} y=${dragObject.y} active=$active")
         lastTouchX = dragObject.x
         lastTouchY = dragObject.y
         if (!dragStartSet) {
@@ -591,6 +592,7 @@ class OneUiDrawerDragOverlay(
             pageStart + cell >= list.size && page == pageCount - 1 -> list.size
             else -> -1
         }
+        android.util.Log.d("DragFlow", "updateGridTarget page=$page cell=$cell targetIndex=$targetIndex card=$tmpGrid")
         updatePreviewShift()
     }
 

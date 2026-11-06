@@ -51,6 +51,10 @@ scrollTo 的 canvas 平移（页点曾随第一页滑出屏幕）。
 位图（composeLabeledIcon）；BubbleTextView 裸构造在本网格的标签渲染不可靠。
 **构建坑**：OneDrive+配置缓存下 assemble 会误报 up-to-date 吞掉源码改动，
 验证编译用 --no-configuration-cache。
+**v0.39**：拖拽无动画真凶——cell 丢失 DraggableView 接口导致
+beginDragShared NPE、拖拽从未启动；新增 DraggableCellView 修复。
+**调试手段**：模拟器窗口移主屏后用 Computer Use 鼠标长按拖拽（真实触摸）
++ logcat -s DragFlow PreviewShift；adb long-press 注入不可靠。
 
 当前 APK：
 

@@ -163,7 +163,7 @@ class OneUiDrawerPagedGrid(
                 setTextColor(0xFFF1F1F7.toInt())
                 textSize = textPx / resources.displayMetrics.density
             }
-            val cellView = android.widget.LinearLayout(context).apply {
+            val cellView = DraggableCellView(context).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -322,6 +322,7 @@ class OneUiDrawerPagedGrid(
         val samePage = from in pageStart until pageEnd && to in pageStart..pageEnd
         val cellW = page.width.toFloat() / columns()
         val cellH = page.height.toFloat() / rows()
+        val interpolator = android.view.animation.DecelerateInterpolator(1.6f)
 
         for (viewIdx in 0 until page.childCount) {
             val view = page.getChildAt(viewIdx) ?: continue
@@ -336,13 +337,16 @@ class OneUiDrawerPagedGrid(
             }
             if (target == globalIdx) {
                 if (view.translationX != 0f || view.translationY != 0f) {
-                    view.animate().translationX(0f).translationY(0f).setDuration(120L).start()
+                    view.animate().translationX(0f).translationY(0f)
+                        .setDuration(140L).setInterpolator(interpolator).start()
                 }
                 continue
             }
-            val tx = (target % columns() - viewIdx % columns()) * cellW
-            val ty = (target / columns() - viewIdx / columns()) * cellH
-            view.animate().translationX(tx).translationY(ty).setDuration(150L).start()
+            val tx = ((target % columns()) - (viewIdx % columns())) * cellW
+            val ty = ((target / columns()) - (viewIdx / columns())) * cellH
+            view.animate().translationX(tx.roundToInt().toFloat())
+                .translationY(ty.roundToInt().toFloat())
+                .setDuration(220L).setInterpolator(interpolator).start()
         }
     }
 
@@ -367,6 +371,24 @@ class OneUiDrawerPagedGrid(
     private fun columns(): Int = launcher.deviceProfile.inv.numColumns
 
     private fun rows(): Int = launcher.deviceProfile.inv.numRows
+
+    /**
+     * A drawer cell: icon + label column that also satisfies the drag
+     * pipeline's [com.android.launcher3.dragndrop.DraggableView] contract.
+     * Without it [Workspace.beginDragShared] crashes with an NPE before the
+     * drag ever starts, which is why drag interactions appeared dead.
+     */
+    class DraggableCellView(context: Context) :
+        android.widget.LinearLayout(context),
+        com.android.launcher3.dragndrop.DraggableView {
+
+        override fun getViewType(): Int =
+            com.android.launcher3.dragndrop.DraggableView.DRAGGABLE_ICON
+
+        override fun getSourceVisualDragBounds(bounds: android.graphics.Rect) {
+            bounds.set(0, 0, width, height)
+        }
+    }
 
     /**
      * One drawer page: a fixed cols x rows grid whose cells host
