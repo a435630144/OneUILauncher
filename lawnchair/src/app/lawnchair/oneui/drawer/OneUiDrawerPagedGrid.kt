@@ -92,12 +92,15 @@ class OneUiDrawerPagedGrid(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        // One UI page dots sit just above the docked search capsule, centered.
+        // One UI page dots sit just above the docked search capsule, centered,
+        // and stay fixed on screen like the search bar itself. PagedView
+        // scrolls via scrollTo(), which shifts this view's canvas by -scrollX,
+        // so the dot row is drawn at scrollX to cancel that offset.
         if (childCount == 0 || visibility != VISIBLE) return
         val dot = 2.6f * resources.displayMetrics.density
         val gap = 14f * resources.displayMetrics.density
         val y = height - paddingBottom / 2f
-        val startX = width / 2f - (childCount - 1) * gap / 2f
+        val startX = scrollX + width / 2f - (childCount - 1) * gap / 2f
         for (i in 0 until childCount) {
             pageDotPaint.color = Color.WHITE
             pageDotPaint.alpha = if (i == mCurrentPage) 230 else 80

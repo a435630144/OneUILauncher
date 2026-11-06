@@ -512,6 +512,16 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.37 — 抽屉页点固定屏幕（2026-11-07）
+
+**BUG：抽屉页点随第一页滑动（用户报告）**
+
+- **根因**：PagedView 用 `scrollTo()` 滚动，会把自身 canvas 平移
+  `-scrollX`——页点画在 `OneUiDrawerPagedGrid.onDraw` 里，随之被拖走。
+- **修复**：绘制 x 坐标加 `scrollX` 抵消偏移，页点行与搜索栏一样固定在屏幕
+  底部居中，仅高亮点随当前页变化。模拟器验证：翻到第 2 页后页点仍在
+  搜索栏上方居中、第 2 点高亮。
+
 ## v0.36 — 编辑态滑动修复（2026-11-07）
 
 **BUG：编辑模式进入后无法左右滑动（用户报告）**

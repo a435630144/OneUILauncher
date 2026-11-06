@@ -127,3 +127,6 @@ res/drawable/round_rect_folder.xml
 // v0.36: 编辑态滑动修复——overlay hitSelf 不再含页面卡片/+卡片（滑动交还 workspace），
 // tap 判定移入 Workspace.onTouchEvent（EDIT_MODE DOWN 记点、UP 位移<touchSlop：
 // 目标页=EXTRA 则 addUserPage，然后 goToState(NORMAL)）。
+
+// v0.37: 抽屉页点固定屏幕——OneUiDrawerPagedGrid.onDraw 绘制 x 加 scrollX 抵消
+// PagedView scrollTo 的 canvas 平移（页点曾随第一页滑出屏幕）。

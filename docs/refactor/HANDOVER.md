@@ -45,6 +45,8 @@ One UI 化布局此前静默失效、新 id 不进 R），两份已同步，v28 
 **v0.36**：编辑态无法左右滑动修复——页面卡片不再被 overlay 接管（滑动交还
 workspace），tap 判定（位移<touchSlop）移入 Workspace.onTouchEvent：tap 进入
 目标页并退出编辑、tap + 卡片建页。
+**v0.37**：抽屉页点固定屏幕——onDraw 绘制 x 加 scrollX 抵消 PagedView
+scrollTo 的 canvas 平移（页点曾随第一页滑出屏幕）。
 
 当前 APK：
 
