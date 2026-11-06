@@ -512,6 +512,22 @@
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
 
+## v0.36 — 编辑态滑动修复（2026-11-07）
+
+**BUG：编辑模式进入后无法左右滑动（用户报告）**
+
+- **根因**：OneUiPageEditOverlay 为实现「点击卡片退出编辑」在 DOWN 时接管了
+  整个页面卡片区域——而卡片几乎占满编辑态屏幕，左右滑动手势全部被吃掉。
+- **修复**：职责重划——
+  - overlay 只接管自身控件（顶部 🏠 / 🗑 / 页点行 / 底部四按钮）；
+    页面卡片（含 + 卡片）不再接管，滑动完全交还 workspace。
+  - 「tap 退出编辑并进入该页」「tap + 卡片建页」移入
+    `Workspace.onTouchEvent`：EDIT_MODE 下记录 DOWN 坐标，UP 位移小于
+    touchSlop 判定为 tap → `getDestinationPage()` 是 EXTRA 页则
+    `addUserPage()`，随后 `goToState(NORMAL)`；滑动则由 PagedView 原生
+    snap 流程处理。
+- 模拟器验证：编辑态进入 → 横滑翻页 ✓ → 邻页边缘 ✓ → 无崩溃。
+
 ## v0.35 — 主屏文件夹 ⊕ 添加应用 + 布局覆盖修复（2026-11-07）
 
 **主屏文件夹 ⊕（ref09 复刻）**

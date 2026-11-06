@@ -1363,11 +1363,43 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
      * Needed here because launcher has a fullscreen exclusion rect and doesn't
      * pilfer the pointers.
      */
+    /** Down position while in the One UI page overview, to tell taps from swipes. */
+    private float mEditTapDownX, mEditTapDownY;
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
         if (isTrackpadMultiFingerSwipe(ev)) {
             return false;
+        }
+        // One UI page overview: a tap (not a swipe) on the workspace opens the
+        // tapped page and leaves the editor; tapping the trailing add-page
+        // card appends a real page. The editor overlay only claims its own
+        // controls, so horizontal swiping stays with the workspace here.
+        if (mLauncher.isInState(EDIT_MODE)) {
+            switch (ev.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    mEditTapDownX = ev.getX();
+                    mEditTapDownY = ev.getY();
+                    break;
+                case MotionEvent.ACTION_UP: {
+                    float dx = Math.abs(ev.getX() - mEditTapDownX);
+                    float dy = Math.abs(ev.getY() - mEditTapDownY);
+                    if (dx < mTouchSlop && dy < mTouchSlop) {
+                        int target = getDestinationPage();
+                        if (target >= 0 && target < getChildCount()
+                                && getCellLayoutId((CellLayout) getChildAt(target))
+                                        == EXTRA_EMPTY_SCREEN_ID) {
+                            addUserPage();
+                        }
+                        mLauncher.getStateManager().goToState(
+                                com.android.launcher3.LauncherState.NORMAL);
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
         }
         return super.onTouchEvent(ev);
     }

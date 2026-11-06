@@ -377,20 +377,16 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
 
     // region Touch
 
-    /** True when the point belongs to one of the overlay's own controls. */
+    /** True when the point belongs to one of the overlay's own controls.
+     *  Page cards are deliberately NOT claimed so the workspace keeps
+     *  horizontal swiping in edit mode; tap-to-open-page lives in Workspace. */
     private fun hitSelf(x: Float, y: Float): Boolean {
         val xi = x.roundToInt()
         val yi = y.roundToInt()
         if (homeRect.contains(xi, yi)) return true
         if (!trashRect.isEmpty && trashRect.contains(xi, yi)) return true
-        if (!addCardRect.isEmpty && addCardRect.contains(xi, yi)) return true
         if (railRect.contains(xi, yi)) return true
         if (y > bottomRects[0]!!.top) return true
-        // Page cards count as the editor's tap targets (tap = open that page).
-        for (i in 0 until workspace.childCount) {
-            if (isAddCardPage(i)) continue
-            if (pageCard(tmpRect, i) && tmpRect.contains(xi, yi)) return true
-        }
         return false
     }
 
@@ -401,7 +397,7 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
         when (event.actionMasked) {
             android.view.MotionEvent.ACTION_DOWN -> {
                 // Claim the stream only when the press lands on one of the
-                // editor's controls; otherwise the workspace keeps the gesture.
+                // editor's controls; page swipes stay with the workspace.
                 return hitSelf(x, y)
             }
             android.view.MotionEvent.ACTION_UP -> {
@@ -435,11 +431,6 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
                         confirmDeleteCurrentPage()
                         return true
                     }
-                    !addCardRect.isEmpty && addCardRect.contains(x.roundToInt(), y.roundToInt()) -> {
-                        workspace.addUserPage()
-                        invalidate()
-                        return true
-                    }
                     y > bottomRects[0]!!.top -> {
                         for (i in BOTTOM_ITEMS.indices) {
                             val rect = bottomRects[i] ?: continue
@@ -449,17 +440,6 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
                             }
                         }
                         return true
-                    }
-                    else -> {
-                        // Tapping a page card opens that page and leaves the editor.
-                        for (i in 0 until workspace.childCount) {
-                            if (isAddCardPage(i)) continue
-                            if (pageCard(tmpRect, i) && tmpRect.contains(x.roundToInt(), y.roundToInt())) {
-                                workspace.snapToPage(i)
-                                launcher.stateManager.goToState(LauncherState.NORMAL)
-                                return true
-                            }
-                        }
                     }
                 }
             }

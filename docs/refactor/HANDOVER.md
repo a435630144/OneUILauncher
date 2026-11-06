@@ -42,6 +42,9 @@ K:/F: token 序列 + drawerFolders JSON 存储；走查修复 5 处（占位匹�
 路径）；**修复重大资源覆盖坑**——lawnchair/res 同名布局运行时覆盖 res/（文件夹
 One UI 化布局此前静默失效、新 id 不进 R），两份已同步，v28 圆角统一 28dp。
 抽屉文件夹管理面板已完成（v0.34）。文件夹 ○ 按钮（排序编辑）待定。
+**v0.36**：编辑态无法左右滑动修复——页面卡片不再被 overlay 接管（滑动交还
+workspace），tap 判定（位移<touchSlop）移入 Workspace.onTouchEvent：tap 进入
+目标页并退出编辑、tap + 卡片建页。
 
 当前 APK：
 
