@@ -74,6 +74,8 @@ build\outputs\apk\lawnWithQuickstepGithub\debug\*.apk
 | 编辑态过渡 | 长按拖起 220ms：压暗渐入 + 分页卡片缩放归位 + 内容淡入（editProgress 驱动） | `OneUiDrawerDragOverlay.onDraw`、`startEditAnimation` |
 | 搜索胶囊 | 窄版居中（左右 64dp 内缩，One UI 8.5） | `search_container_all_apps.xml` |
 | 抽屉排序 | 字母（滚动列表）/ 使用频率 / 自定义（**横向分页网格** `OneUiDrawerPagedGrid`）三种模式；频率按自维护启动计数降序 | `LawnchairAlphabeticalAppsList`、`LaunchCounter.kt`、`OneUiDrawerPagedGrid.kt` |
+| 抽屉文件夹 | 拖 A 到 B 合并、拖到文件夹加入、文件夹自身可拖动；网格里显示 2×2 合成图；管理面板（4 列成员网格 / 编辑态减号 / + 添加应用 / 重命名 / 删除 / 剩 1 自动解散） | `DrawerFolderStore.kt`、`OneUiDrawerFolderSheet.kt`、`OneUiDrawerPagedGrid.kt`、`OneUiDrawerDragOverlay.kt` |
+| 启动计数 | 图标点击经 `ItemClickHandler.startAppShortcutOrInfoActivity` 记录，供「使用频率」排序使用 | `ItemClickHandler.java`、`LaunchCounter.kt` |
 | 文档 | 架构、验证记录、上游同步、交接说明 | `docs/refactor/` |
 
 ---
@@ -362,9 +364,11 @@ OneUiDrawerDragOverlay.kt`，由 `LawnchairLauncher.setupOneUiDrawerDragOverlay(
   抽屉。
 - **条目菜单**：拖起后延迟 120ms 才显示 One UI 条目菜单（信息 / 添加至主屏 /
   卸载）；移动超过 8dp 立即取消延迟并关闭，避免一拖就闪菜单。定位用
-  `DragView.getDragRegion()` 取浮层内真实图标矩形（排除阴影边距）后
-  `showAtLocation`：水平以图标为中心（8dp clamp），指针尖端距图标 10dp；上方
-  放不下则翻到下方、指针翻到卡片顶部，指针 x 始终跟随图标中心。
+  `DragView.getDragRegion()`，它是**源视图坐标系**内的图标矩形（排除阴影边距；
+  浮层被 blur outline 平移过，不能直接叠加 DragView 的屏幕位置），必须叠加
+  源视图的 `getLocationOnScreen()`，再 `showAtLocation`：水平以图标为中心
+  （8dp clamp），指针尖端距图标 10dp；上方放不下则翻到下方、指针翻到卡片顶部，
+  指针 x 始终跟随图标中心。
 - **框架协作**：`Workspace.onDragStart` 遇 `isDrawerDrag` 跳过常规起手（不切
   SPRING_LOADED），`onDragEnd` 提前返回；抽屉拖拽不再给
   `BubbleTextView.startLongPressAction()` 的深链弹窗设 `preDragCondition`
@@ -379,6 +383,31 @@ OneUiDrawerDragOverlay.kt`，由 `LawnchairLauncher.setupOneUiDrawerDragOverlay(
   截图确认图标坐标；`input motionevent DOWN x y` → 等 1200ms → `MOVE` 进入
   拖拽。**必须按在图标或标签上**，按在格间空隙上只会得到按压态，随后下滑还会
   关闭抽屉（早期一度误判为长按失效）。
+
+### 3.11 抽屉文件夹与管理面板
+
+- **数据**：`pref_drawerCustomOrder` 是 token 序列（`K:<key>` / `F:<id>`，
+  兼容旧的无前缀行），文件夹成员与标题存在 `pref_drawerFolders`（JSON）。
+  合并/加入时应用会从顶层 token 移除，保证「一个应用只出现一次」。
+- **渲染**：`OneUiDrawerPagedGrid` 把文件夹画成一个格子，图标是自绘合成图
+  （48dp 圆角底板 + 最多 4 个成员图标 2×2），`Folder.placeholderKey` 指向
+  第一个仍安装的成员，点击经 `folderByPlaceholder` 反查。
+- **管理面板** `OneUiDrawerFolderSheet`（v0.34）：自绘 `Dialog`，宽 92% 屏宽
+  （上限 420dp）、28dp 圆角、55% dim。浏览态是 4 列成员网格，点成员走
+  `ItemClickHandler.onClick` 启动并关闭；标题栏右侧「编辑」进入编辑态——
+  成员右上角红色减号、末尾「+」格、「点击名称可重命名」提示、底部分隔线 +
+  红色「删除文件夹」。网格高度 `min(行数×92dp, 屏高 55%)`，超出滚动。
+- **一致性**：所有改动直接写 pref 再回调
+  `LawnchairLauncher.syncOneUiDrawerPagedGrid()` 重建，面板不缓存顺序，每次
+  `loadFolders()` 重读；因此拖拽路径与面板路径不会互相覆盖。
+- **成员下限**：删到只剩 1 个时自动解散（`dissolveFolderToken` 把最后两个
+  成员写回 `F:` token 原位，删 JSON 条目，Toast「文件夹已解散」）。移除的
+  成员用 `insertAppsAfterFolder` 插回文件夹后面，新增成员用 `detachApps`
+  先从顶层摘掉。
+- **启动计数**：面板的成员点击复用 `ItemClickHandler.onClick`，因此自动走
+  `ItemClickHandler.startAppShortcutOrInfoActivity` 里的
+  `LaunchCounter.increment()`（v0.25 起），与抽屉网格 / 搜索 / 主屏一致，
+  不需要额外埋点。
 
 ---
 
@@ -489,7 +518,12 @@ D:\AndroidDevelopment\Sdk\emulator\emulator.exe -avd medium_phone -gpu auto
 - **自定义排序（已完成）**：字母 / 自定义两种模式，顺序存在
   `pref_drawerCustomOrder`，在设置页用 `ReorderablePreferenceGroup` 拖拽编辑
   （§3.5）。抽屉菜单可直接切模式并跳到编辑器；切换后列表即时刷新。
-  ~~剩余：使用频率排序~~ ✅ 已实现（v0.25，自维护启动计数）；剩余：工作资料 / 私密空间的自定义顺序；抽屉内长按拖拽已实现（§3.10），待真机实测。
+  ~~剩余：使用频率排序~~ ✅ 已实现（v0.25，自维护启动计数；v0.34 补上
+  `startActivitySafely` 写入点，此前计数从未递增）；剩余：工作资料 / 私密空间的自定义顺序；
+  抽屉内长按拖拽已实现（§3.10），待真机实测。
+- **抽屉文件夹（已完成，v0.32 / v0.34）**：拖 A 到 B 合并、拖到文件夹加入、
+  文件夹自身可拖动（§11 / ARCHITECTURE §11）；点击文件夹打开管理面板
+  （§3.11）。剩余可选项：文件夹内拖拽调序、多选批量移动、文件夹颜色/封面。
 - 底部菜单主入口已经完成，后续只补「搜索设置」等 One UI 8.5 菜单项。
 
 ### 6.4 设置页 One UI 化

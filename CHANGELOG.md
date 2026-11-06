@@ -390,11 +390,12 @@
   圆角 24dp。真机截图实测网格 241..2077、格高 306、页点圆心 y=2124 一致。
 - **条目菜单**：拖起后延迟 120ms 显示（标题 + ⓘ + 添加至主屏幕 + 卸载），
   位移超过 8dp 收起；位移基准改为首次 `onDragOver` 坐标（`onDragStart` 时
-  `dragObject.x/y` 仍为 0，旧逻辑会立刻误判位移）。定位改为
-  `DragView.getDragRegion()` 取浮层内真实图标矩形（排除阴影边距）后
-  `showAtLocation`：水平以图标为中心并 8dp clamp，指针尖端距图标 10dp；上方
-  放不下则翻到下方、指针翻到卡片顶部，指针 x 跟随图标。卡片宽 300dp、
-  底色 `#F7F7FA`。
+  `dragObject.x/y` 仍为 0，旧逻辑会立刻误判位移）。定位改为读
+  `DragView.getDragRegion()`——它是**源视图坐标系**里的图标矩形（排除阴影
+  边距），浮层本身被 blur outline 平移过，所以锚点取「源视图屏幕位置 +
+  region」，不能叠加 DragView 位置；随后 `showAtLocation`：水平以图标为中心
+  并 8dp clamp，指针尖端距图标 10dp；上方放不下则翻到下方、指针翻到卡片顶部，
+  指针 x 跟随图标。卡片宽 300dp、底色 `#F7F7FA`。
 - 抽屉拖拽不再走 `startLongPressAction()` 的 `preDragCondition`（长按直接进编辑态），
   该弹窗只保留给主页图标；拖拽期间 `appsView` 置 `INVISIBLE`，由覆盖层接管绘制。
 
@@ -510,6 +511,39 @@
 
 - `HANDOVER.md` §2/§6.3 更新；`tools/oneui-overlay.txt` 增加
   `OneUiDrawerPagedGrid.kt`。
+
+## v0.34 — 抽屉文件夹管理面板 + 启动计数（2026-11-06）
+
+**文件夹管理面板（新增 `OneUiDrawerFolderSheet.kt`）**
+
+- 点击抽屉里的文件夹不再弹系统 `AlertDialog` 列表，改为 One UI 风格面板：
+  自绘 `Dialog`（透明窗口 + 55% dim），宽 92% 屏宽（上限 420dp）、28dp 圆角、
+  深浅色自适应；4 列成员网格、图标 52dp、标签 12sp 单行省略，网格高度
+  `min(行数×92dp, 屏高 55%)` 超出滚动。
+- 浏览态点成员直接用 `ItemClickHandler.onClick` 启动（复用启动动画与启动计数），
+  然后关闭面板。
+- 标题栏右侧「编辑」进入编辑态：成员右上角红色圆形减号、末尾「+」添加格、
+  标题变可点击（下方提示「点击名称可重命名」）、底部出现分隔线与红色
+  「删除文件夹」。
+- 「+」打开多选应用列表（自动排除已在任何文件夹里的应用）；选中后先把这些
+  应用从顶层顺序里摘掉（`detachApps`）再加入文件夹，保证同一应用只出现一次。
+- 移除成员用 `insertAppsAfterFolder` 把它插回文件夹 token 之后；成员删到只剩
+  1 个时**自动解散**：`dissolveFolderToken` 把最后两个成员写回 `F:` token 原位，
+  删除 JSON 条目，Toast「文件夹已解散」。
+- 面板只持有 `folderId`，每次操作都 `loadFolders()` 重读，改完写 pref 再回调
+  `syncOneUiDrawerPagedGrid()` 重建网格——不维护第二份顺序，和拖拽路径不会打架。
+
+**启动计数复用（无新增埋点）**
+
+- 面板的成员点击走 `ItemClickHandler.INSTANCE.onClick`，与抽屉网格同一路径；
+  `ItemClickHandler.startAppShortcutOrInfoActivity` 自 v0.25 起就会调用
+  `LaunchCounter.increment()`，所以「使用频率」排序能拿到面板里的启动。
+  这里没有另外覆写 `startActivitySafely`，否则一次点击会记两次。
+
+**文案**
+
+- 新增 `oneui_drawer_folder_edit/done/add/add_apps/rename/rename_hint/delete/
+  delete_message/no_apps/dissolved`（中英）。
 
 ## v0.33 — 编辑器交互修复 + 页点视觉 + 主屏卡死修复（2026-11-05）
 

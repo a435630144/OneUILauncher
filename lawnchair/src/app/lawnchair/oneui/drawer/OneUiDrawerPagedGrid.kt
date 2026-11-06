@@ -225,57 +225,15 @@ class OneUiDrawerPagedGrid(
         return bitmap
     }
 
-    /** One UI drawer folder sheet: tap a member to launch it. */
+    /** One UI drawer folder sheet: grid of members plus add/rename/delete. */
     private fun showFolderSheet(folder: DrawerFolderStore.Folder) {
-        val density = resources.displayMetrics.density
-        val container = android.widget.LinearLayout(context).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding((20 * density).roundToInt(), (12 * density).roundToInt(), (20 * density).roundToInt(), (12 * density).roundToInt())
-        }
-        for (key in folder.keys) {
-            val app = appsByKey[key] ?: continue
-            val row = android.widget.LinearLayout(context).apply {
-                orientation = android.widget.LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, (10 * density).roundToInt(), 0, (10 * density).roundToInt())
-            }
-            val iconView = android.widget.ImageView(context).apply {
-                app.bitmap.icon?.let { setImageBitmap(it) }
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    (40 * density).roundToInt(), (40 * density).roundToInt(),
-                )
-            }
-            val label = android.widget.TextView(context).apply {
-                text = app.title
-                textSize = 16f
-                val attrs = context.obtainStyledAttributes(
-                    intArrayOf(android.R.attr.textColorPrimary),
-                )
-                setTextColor(attrs.getColor(0, Color.WHITE))
-                attrs.recycle()
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
-                ).apply { marginStart = (16 * density).roundToInt() }
-            }
-            row.addView(iconView)
-            row.addView(label)
-            row.setOnClickListener {
-                sheetDialog?.dismiss()
-                launcher.startActivitySafely(it, app.intent, app)
-            }
-            container.addView(row)
-        }
-        val scroll = android.widget.ScrollView(context).apply { addView(container) }
-        sheetDialog = android.app.AlertDialog.Builder(context)
-            .setTitle(folder.title.ifBlank {
-                context.getString(com.android.launcher3.R.string.oneui_drawer_folder_name)
-            })
-            .setView(scroll)
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        OneUiDrawerFolderSheet(
+            context = context,
+            folderId = folder.id,
+            appsByKey = appsByKey,
+            onChanged = { (launcher as? LawnchairLauncher)?.syncOneUiDrawerPagedGrid() },
+        ).show()
     }
-
-    private var sheetDialog: android.app.AlertDialog? = null
 
     private fun startDrawerDrag(view: BubbleTextView): Boolean {
         val app = view.tag as? AppInfo ?: return false

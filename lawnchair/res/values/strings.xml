@@ -101,6 +101,16 @@
     <string name="oneui_drawer_folder_name">Folder</string>
     <string name="oneui_drawer_folder_merged">Merged into folder</string>
     <string name="oneui_drawer_folder_added">Added to folder</string>
+    <string name="oneui_drawer_folder_edit">Edit</string>
+    <string name="oneui_drawer_folder_done">Done</string>
+    <string name="oneui_drawer_folder_add">Add</string>
+    <string name="oneui_drawer_folder_add_apps">Add apps</string>
+    <string name="oneui_drawer_folder_rename">Rename folder</string>
+    <string name="oneui_drawer_folder_rename_hint">Tap the name to rename</string>
+    <string name="oneui_drawer_folder_delete">Delete folder</string>
+    <string name="oneui_drawer_folder_delete_message">The apps inside will move back to the app drawer.</string>
+    <string name="oneui_drawer_folder_no_apps">No apps available</string>
+    <string name="oneui_drawer_folder_dissolved">Folder dissolved</string>
     <string name="oneui_page_delete_title">Delete page?</string>
     <string name="oneui_page_delete_message">This page holds %1$d item(s). Deleting the page removes them from the home screen.</string>
     <string name="oneui_drawer_drag_alphabetical">Switched to custom order</string>

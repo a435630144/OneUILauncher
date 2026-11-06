@@ -112,3 +112,10 @@ res/drawable/round_rect_folder.xml
 // v0.33: 编辑器 🗑 卡片上方延长区 + DOWN 命中才接管事件流（点击卡片退出编辑）+
 // ≡ 均匀间距（负一屏槽位保留，功能待定）；页点行实心小房子 8.6dp + 圆点 r3.2dp 等大；
 // 主屏卡死根因：stripEmptyScreens 删除当前页后 setCurrentPage 越界 → 钳制+snapToPage。
+
+// v0.34: 抽屉文件夹管理面板——新增 OneUiDrawerFolderSheet.kt（4 列成员网格/编辑态
+// 红色减号/＋添加应用多选/标题重命名/底部删除文件夹/成员剩 1 自动解散）；
+// DrawerFolderStore.detachApps + insertAppsAfterFolder + dissolveFolderToken；
+// OneUiDrawerPagedGrid.showFolderSheet 改调新面板（删除旧 AlertDialog 列表）；
+// 成员点击复用 ItemClickHandler.onClick（连同 v0.25 的启动计数）；
+// 中英文案 oneui_drawer_folder_*。

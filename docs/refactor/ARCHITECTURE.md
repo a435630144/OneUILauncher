@@ -531,8 +531,53 @@ One UI 的改动被刻意收在十几个文件里（见 `tools/oneui-overlay.txt
   主屏 / 卸载）；移动超过 8dp 立即取消延迟并关闭菜单，避免一拖就闪菜单。
   定位不用 `showAsDropDown(source)`（列表行自带标签内边距，会把卡片顶到离图标
   ~50dp 外），也不用网格图标尺寸估算浮层矩形（浮层带阴影边距，会多算 ~5dp）；
-  改为取 `DragView.getDragRegion()` 得到浮层内真实图标矩形，`showAtLocation`
+  改为取 `DragView.getDragRegion()`，注意它返回的是**源视图坐标系**内的图标
+  矩形（`DragPreviewProvider` 画浮层时按 `blurSizeOutline/2 - mTempRect.left`
+  平移过，浮层位置不等于源视图位置），因此锚点要用「源视图屏幕位置 +
+  `dragRegion`」而不是「DragView 屏幕位置 + `dragRegion`」；`showAtLocation`
   以图标中心为卡片中心（左右 8dp clamp），指针尖端距图标 10dp；上方放不下时
   翻到图标下方、指针翻到卡片顶部，指针 x 始终跟随图标中心。
 - K2 注意：Java raw `DragView` 参数在 Kotlin 声明处需写 `DragView<Launcher>`，
   否则报 "One type argument expected"。
+
+## 11. 抽屉文件夹
+
+数据与渲染（`DrawerFolderStore` / `OneUiDrawerPagedGrid`）：
+
+- 自定义顺序是一串 token：`K:<componentKey>` 单个应用、`F:<folderId>` 文件夹
+  占位。旧版本写入的无前缀行按 `K:` 解析，不做迁移。文件夹内容单独存在
+  `pref_drawerFolders`（JSON：`title` + `keys`），因此同一应用不会既在顶层又在
+  文件夹里——合并时把它从 token 序列中移除。
+- 网格里只把文件夹画成**一个**格子：`Folder.placeholderKey` 取第一个仍存在于
+  当前应用表的成员 key，渲染成合成图标（48dp 圆角底板 + 最多 4 个成员图标
+  2×2 排列），`folderByPlaceholder` 反查点击目标。成员全部卸载时该文件夹不渲染。
+- 拖拽语义（`OneUiDrawerDragOverlay`）：A 拖到 B 上 → 用
+  `mergeIntoFolder()` 建新文件夹；拖到已有文件夹 → `addToFolder()`；拖拽文件夹
+  本身 → 移动 `F:` token；文件夹拖到主屏空白区直接回弹（`addAppFromDrawer`
+  只会复制占位应用，语义错误）。
+
+管理面板（`OneUiDrawerFolderSheet`）：
+
+- 用自绘 `Dialog`（`FEATURE_NO_TITLE` + 透明窗口背景 + 55% dim），宽度为屏宽
+  92%（上限 420dp），28dp 圆角卡片；不用 `AlertDialog` 是因为要 4 列图标网格 +
+  标题栏右侧「编辑/完成」+ 底部红色「删除文件夹」。
+- 浏览态：4 列成员网格，点成员走 `ItemClickHandler.onClick`（复用启动动画与
+  启动计数）后关闭面板；行高固定 92dp，图标 52dp，标签 12sp 单行省略。
+- 编辑态（标题栏「编辑」）：每个成员右上角红色圆形减号，末尾追加「+」格；
+  标题变成可点击（下方出现「点击名称可重命名」提示），底部出现分隔线与红色
+  「删除文件夹」。网格高度 `min(行数 × 92dp, 屏高 55%)`，超出由 `ScrollView`
+  滚动。
+- 所有修改直接写 pref 再回调 `LawnchairLauncher.syncOneUiDrawerPagedGrid()`
+  重建网格，不维护第二份内存顺序；面板自身只持有 `folderId`，每次操作都
+  `loadFolders()` 重新读，避免和拖拽路径的状态打架。
+- 成员数规则：删到只剩 1 个时**自动解散**——把最后两个成员按顺序写回
+  `F:` token 的位置（`dissolveFolderToken`），删除 `pref_drawerFolders` 条目，
+  Toast「文件夹已解散」并关闭面板。
+- 删除应用（移除成员）时用 `insertAppsAfterFolder` 把该应用插回文件夹 token
+  之后；添加应用时用 `detachApps` 先把它们从顶层移除，再加入文件夹，保证
+  「同一应用只出现一次」。
+
+启动计数：`ItemClickHandler.startAppShortcutOrInfoActivity` 在
+`launcher is LawnchairLauncher` 时调用 `LaunchCounter.increment()`（v0.25 起）。
+文件夹面板的成员点击也走 `ItemClickHandler.onClick`，因此与抽屉网格 / 搜索 /
+主屏共用同一计数路径，无需额外埋点。

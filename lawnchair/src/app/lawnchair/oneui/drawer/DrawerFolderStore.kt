@@ -97,6 +97,55 @@ object DrawerFolderStore {
         return out
     }
 
+    // region Order editing
+    //
+    // The helpers below rewrite the *saved* order when folder membership
+    // changes from the folder sheet. They keep unknown tokens untouched so a
+    // not-yet-installed app never gets dropped from the custom order.
+
+    private fun tokensToString(tokens: List<Pair<String, String>>): String =
+        tokens.joinToString("\n") { (type, value) -> "$type:$value" }
+
+    /** Removes the given app keys from the top level (they moved into a folder). */
+    fun detachApps(prefs: PreferenceManager, keys: Collection<String>) {
+        if (keys.isEmpty()) return
+        val tokens = parseOrder(prefs.drawerCustomOrder.get())
+            .filterNot { it.first == "K" && it.second in keys }
+        prefs.drawerCustomOrder.set(tokensToString(tokens))
+    }
+
+    /** Inserts app keys right after the folder token (folder was dissolved). */
+    fun insertAppsAfterFolder(
+        prefs: PreferenceManager,
+        folderId: String,
+        keys: List<String>,
+    ) {
+        if (keys.isEmpty()) return
+        val tokens = parseOrder(prefs.drawerCustomOrder.get()).toMutableList()
+        val index = tokens.indexOfFirst { it.first == "F" && it.second == folderId }
+        val insertAt = if (index >= 0) index + 1 else tokens.size
+        tokens.addAll(insertAt, keys.map { "K" to it })
+        prefs.drawerCustomOrder.set(tokensToString(tokens))
+    }
+
+    /** Replaces the folder token with its members, in order. */
+    fun dissolveFolderToken(
+        prefs: PreferenceManager,
+        folderId: String,
+        keys: List<String>,
+    ) {
+        val tokens = parseOrder(prefs.drawerCustomOrder.get()).flatMap { token ->
+            if (token.first == "F" && token.second == folderId) {
+                keys.map { "K" to it }
+            } else {
+                listOf(token)
+            }
+        }
+        prefs.drawerCustomOrder.set(tokensToString(tokens))
+    }
+
+    // endregion
+
     /** Serialises the in-memory order; folders are written as `F:<id>` rows. */
     fun writeOrder(
         ordered: List<Any>,

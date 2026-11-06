@@ -88,6 +88,16 @@
     <string name="oneui_drawer_folder_name">文件夹</string>
     <string name="oneui_drawer_folder_merged">已合并为文件夹</string>
     <string name="oneui_drawer_folder_added">已加入文件夹</string>
+    <string name="oneui_drawer_folder_edit">编辑</string>
+    <string name="oneui_drawer_folder_done">完成</string>
+    <string name="oneui_drawer_folder_add">添加</string>
+    <string name="oneui_drawer_folder_add_apps">添加应用</string>
+    <string name="oneui_drawer_folder_rename">重命名文件夹</string>
+    <string name="oneui_drawer_folder_rename_hint">点击名称可重命名</string>
+    <string name="oneui_drawer_folder_delete">删除文件夹</string>
+    <string name="oneui_drawer_folder_delete_message">删除后，文件夹内的应用会回到应用抽屉。</string>
+    <string name="oneui_drawer_folder_no_apps">没有可添加的应用</string>
+    <string name="oneui_drawer_folder_dissolved">文件夹已解散</string>
     <string name="oneui_page_delete_title">删除此页面？</string>
     <string name="oneui_page_delete_message">此页面有 %1$d 个项目，删除页面将一并移除它们。</string>
     <string name="oneui_drawer_drag_alphabetical">已切换为自定义排序</string>
