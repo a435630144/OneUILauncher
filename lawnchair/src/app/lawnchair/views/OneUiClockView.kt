@@ -37,6 +37,8 @@ class OneUiClockView @JvmOverloads constructor(
 ) : LinearLayout(context, attrs, defStyleAttr) {
 
     private var lastScrollX = Int.MIN_VALUE
+    private var lastScale = 1f
+    private var workspaceView: View? = null
     private var preDrawListener: ViewTreeObserver.OnPreDrawListener? = null
     private var preDrawObserver: ViewTreeObserver? = null
 
@@ -102,13 +104,14 @@ class OneUiClockView @JvmOverloads constructor(
         syncWidgetVisibility()
 
         val ws = rootView.findViewById<View>(R.id.workspace) ?: return
-        syncTranslation(ws.scrollX)
+        workspaceView = ws
+        syncTransform()
 
         preDrawObserver = viewTreeObserver.also { observer ->
             preDrawListener = ViewTreeObserver.OnPreDrawListener {
                 val scrollX = ws.scrollX
-                if (scrollX != lastScrollX) {
-                    syncTranslation(scrollX)
+                if (scrollX != lastScrollX || ws.scaleX != lastScale) {
+                    syncTransform()
                 }
                 true
             }.also(observer::addOnPreDrawListener)
@@ -122,12 +125,37 @@ class OneUiClockView @JvmOverloads constructor(
         preDrawListener?.let { preDrawObserver?.removeOnPreDrawListener(it) }
         preDrawListener = null
         preDrawObserver = null
+        workspaceView = null
         super.onDetachedFromWindow()
     }
 
-    private fun syncTranslation(scrollX: Int) {
-        lastScrollX = scrollX
-        translationX = -scrollX.toFloat()
+    /**
+     * The clock lives on the drag layer but visually belongs to workspace
+     * page 0. Workspace transforms (edit mode scales it to 0.78 around its
+     * center) must therefore be mirrored here — otherwise the clock stays
+     * pinned at the top-left while the card shrinks away from it.
+     */
+    private fun syncTransform() {
+        val ws = workspaceView ?: return
+        val scale = ws.scaleX
+        val pivotX = ws.width / 2f
+        val pivotY = ws.height / 2f
+        val baseX = left.toFloat()
+        val baseY = top.toFloat()
+        // Where this point lands after the workspace scale, plus the page
+        // swipe offset (scaled identically to the page content).
+        val mappedX = pivotX + (baseX - pivotX) * scale
+        val mappedY = pivotY + (baseY - pivotY) * scale
+        translationX = (mappedX - baseX) - ws.scrollX * scale
+        translationY = mappedY - baseY
+        if (scaleX != scale) {
+            scaleX = scale
+            scaleY = scale
+        }
+        setPivotX(0f)
+        setPivotY(0f)
+        lastScrollX = ws.scrollX
+        lastScale = scale
     }
 
     /**

@@ -152,24 +152,39 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
         drawHouse(canvas, homeRect.exactCenterX(), homeRect.exactCenterY(), 20f * dp, 20f * dp)
 
         // Trash button: the page card visually extends upwards into a header
-        // strip; the trash sits centered in that strip and a faint divider
-        // line separates the strip from the card (per the One UI original).
+        // strip drawn with the card's own background drawable (colors, corner
+        // radius and animation alpha stay in sync); the trash sits centered
+        // in that strip and a faint divider line separates the strip from the
+        // card content (per the One UI original).
         if (pageCard(pageCardRect, currentPage) && !isAddCardPage(currentPage)) {
             val extension = (52f * dp).roundToInt()
-            val t = (40f * dp).roundToInt()
-            // Trash centered in the extension strip, just above the card top.
-            val trashCenterY = pageCardRect.top - extension / 2
-            trashRect.set(
-                pageCardRect.centerX() - t / 2,
-                trashCenterY - t / 2,
-                pageCardRect.centerX() + t / 2,
-                trashCenterY + t / 2,
-            )
-            drawTrash(canvas, trashRect.exactCenterX(), trashRect.exactCenterY(), 11f * dp)
+            val extLeft = pageCardRect.left
+            val extTop = pageCardRect.top - extension
+            val extRight = pageCardRect.right
+            val cardTop = pageCardRect.top
+
+            // Extension strip background: same drawable as the card, clipped
+            // so its bottom corners fall below the strip line (straight edge
+            // against the card, rounded top corners on the strip).
+            val cell = workspace.getChildAt(currentPage) as? com.android.launcher3.CellLayout
+            val bg = cell?.background
+            if (bg != null) {
+                val radius = (28f * dp).roundToInt()
+                val savedBounds = android.graphics.Rect(bg.bounds)
+                canvas.save()
+                canvas.clipRect(
+                    extLeft.toFloat(), extTop.toFloat(),
+                    extRight.toFloat(), cardTop.toFloat(),
+                )
+                bg.setBounds(extLeft, extTop, extRight, cardTop + radius)
+                bg.draw(canvas)
+                canvas.restore()
+                bg.bounds = savedBounds
+            }
 
             // Faint divider line at the very bottom of the strip, separating
             // it from the card — about 70% of the card width, centered.
-            val dividerY = pageCardRect.top - (8f * dp).roundToInt()
+            val dividerY = cardTop - (8f * dp).roundToInt()
             val dividerHalf = pageCardRect.width() * 0.35f
             val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = paint.color
@@ -181,6 +196,17 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
                 pageCardRect.centerX() + dividerHalf, dividerY.toFloat(),
                 dividerPaint,
             )
+
+            // Trash centered in the extension strip.
+            val t = (40f * dp).roundToInt()
+            val trashCenterY = pageCardRect.top - extension / 2
+            trashRect.set(
+                pageCardRect.centerX() - t / 2,
+                trashCenterY - t / 2,
+                pageCardRect.centerX() + t / 2,
+                trashCenterY + t / 2,
+            )
+            drawTrash(canvas, trashRect.exactCenterX(), trashRect.exactCenterY(), 11f * dp)
         } else {
             trashRect.setEmpty()
         }

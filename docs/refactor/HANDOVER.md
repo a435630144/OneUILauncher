@@ -59,6 +59,8 @@ beginDragShared NPE、拖拽从未启动；新增 DraggableCellView 修复。
 syncPages 首帧前直接定位上次页。
 **v0.41**：编辑模式 🗑 布局微调——卡片延伸 52dp 头部区容纳垃圾桶，
 延伸区底部淡色横线与卡片分隔（用户红笔标注复刻）。
+**v0.42**：时钟小组件编辑模式跟随 workspace 缩放（syncTransform 镜像
+scale/pivot/scroll）；卡片延伸区用卡片自身背景 drawable 绘制（视觉同源）。
 
 当前 APK：
 
