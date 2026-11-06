@@ -141,3 +141,6 @@ res/drawable/round_rect_folder.xml
 
 // v0.40: 抽屉页恢复——pref_drawerLastPage + notifyPageSwitchListener 保存 +
 // syncPages 首帧前 setCurrentPage+scrollTo 直接定位（消除第 1 页闪烁）。
+
+// v0.41: 编辑模式 🗑 布局微调——卡片向上延伸 52dp 头部区，垃圾桶居中其中，
+// 延伸区底部 70% 宽淡色横线（alpha 70）与卡片分隔。

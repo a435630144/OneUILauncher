@@ -151,11 +151,14 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
             width / 2 + homeSize / 2, (14f * dp).roundToInt() + homeSize)
         drawHouse(canvas, homeRect.exactCenterX(), homeRect.exactCenterY(), 20f * dp, 20f * dp)
 
-        // Trash button: in the strip the page card visually extends upwards —
-        // outside the card content, so it never overlaps widgets like the clock.
+        // Trash button: the page card visually extends upwards into a header
+        // strip; the trash sits centered in that strip and a faint divider
+        // line separates the strip from the card (per the One UI original).
         if (pageCard(pageCardRect, currentPage) && !isAddCardPage(currentPage)) {
+            val extension = (52f * dp).roundToInt()
             val t = (40f * dp).roundToInt()
-            val trashCenterY = pageCardRect.top - (26f * dp).roundToInt()
+            // Trash centered in the extension strip, just above the card top.
+            val trashCenterY = pageCardRect.top - extension / 2
             trashRect.set(
                 pageCardRect.centerX() - t / 2,
                 trashCenterY - t / 2,
@@ -163,6 +166,21 @@ class OneUiPageEditOverlay(context: Context) : View(context) {
                 trashCenterY + t / 2,
             )
             drawTrash(canvas, trashRect.exactCenterX(), trashRect.exactCenterY(), 11f * dp)
+
+            // Faint divider line at the very bottom of the strip, separating
+            // it from the card — about 70% of the card width, centered.
+            val dividerY = pageCardRect.top - (8f * dp).roundToInt()
+            val dividerHalf = pageCardRect.width() * 0.35f
+            val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = paint.color
+                alpha = 70
+                strokeWidth = 1f * dp
+            }
+            canvas.drawLine(
+                pageCardRect.centerX() - dividerHalf, dividerY.toFloat(),
+                pageCardRect.centerX() + dividerHalf, dividerY.toFloat(),
+                dividerPaint,
+            )
         } else {
             trashRect.setEmpty()
         }

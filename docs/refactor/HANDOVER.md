@@ -57,6 +57,8 @@ beginDragShared NPE、拖拽从未启动；新增 DraggableCellView 修复。
 + logcat -s DragFlow PreviewShift；adb long-press 注入不可靠。
 **v0.40**：抽屉重开闪烁修复——浏览页持久化（pref_drawerLastPage），
 syncPages 首帧前直接定位上次页。
+**v0.41**：编辑模式 🗑 布局微调——卡片延伸 52dp 头部区容纳垃圾桶，
+延伸区底部淡色横线与卡片分隔（用户红笔标注复刻）。
 
 当前 APK：
 
